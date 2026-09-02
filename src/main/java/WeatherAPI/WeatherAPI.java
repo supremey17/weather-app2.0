@@ -1,10 +1,15 @@
 package WeatherAPI;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.weatherapp.Weather;
+
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.URI;
 import java.io.IOException;
+import java.util.List;
+
 
 public class WeatherAPI {
 
@@ -14,9 +19,10 @@ public class WeatherAPI {
 
         public WeatherAPI() {
             client = HttpClient.newHttpClient();
+            ObjectMapper objectMapper = new ObjectMapper();
         }
 
-        public String findAll() throws IOException, InterruptedException {
+        public List<Weather> findAll() throws IOException, InterruptedException {
             String apiKey = "5810ae2ed1e896ae321dcdcee9162539";
             String city = "Hamlin";
             String url = "api.openweathermap.org" + city + "&appid=" + apiKey;
