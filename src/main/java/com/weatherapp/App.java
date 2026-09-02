@@ -12,12 +12,16 @@ import java.io.IOException;
 public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException, InterruptedException {
-        Label label = new Label("Weather Application — coming soon");
+        WeatherAPI weatherAPI = new WeatherAPI();
+        WeatherResponse weather = weatherAPI.findAll();
+
+        String display = weather.name() + ": " + weather.main().temp() + "°F, "
+                + weather.weather().get(0).description();
+
+        Label label = new Label(display);
         StackPane root = new StackPane(label);
         stage.setScene(new Scene(root, 500, 400));
         stage.setTitle("Weather App");
-        WeatherAPI weatherAPI = new WeatherAPI();
-        System.out.print(weatherAPI.findAll());
         stage.show();
     }
 

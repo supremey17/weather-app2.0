@@ -1,1 +1,4 @@
 WeatherAPI/WeatherAPI.class
+com/weatherapp/WeatherInfo.class
+com/weatherapp/WeatherResponse.class
+com/weatherapp/MainInfo.class
