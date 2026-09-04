@@ -13,7 +13,7 @@ import java.io.IOException;
 public class WeatherAPI {
     //This is written so it is only called once in the beginning.
     private final String apiKey;
-    //manages connection pooling to keeping network connections warm so future requests are faster).
+    //manages connection pooling to keeping network connections warm so future requests are faster.
     private final HttpClient client;
     //from jackson to explicitly expensive to create and cheap to reuse
     private final ObjectMapper objectMapper;
@@ -32,7 +32,7 @@ public class WeatherAPI {
 
     public WeatherResponse findByCity(String city) throws IOException, InterruptedException {
        String url ="https://api.openweathermap.org/data/2.5/weather?q="
-               + city + "&units=imperial&appid" + apiKey;
+               + city + "&units=imperial&appid=" + apiKey;
 
 
         HttpRequest request = HttpRequest.newBuilder()
