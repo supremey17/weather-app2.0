@@ -1,4 +1,7 @@
-WeatherAPI/WeatherAPI.class
 com/weatherapp/WeatherInfo.class
 com/weatherapp/WeatherResponse.class
+WeatherAPI/WeatherAPI.class
+com/weatherapp/PreferencesService.class
+com/weatherapp/LocationService$IpLocation.class
+com/weatherapp/LocationService.class
 com/weatherapp/MainInfo.class

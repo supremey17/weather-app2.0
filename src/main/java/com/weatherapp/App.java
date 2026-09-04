@@ -12,11 +12,20 @@ import java.io.IOException;
 public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException, InterruptedException {
+        PreferencesService prefsService = new PreferencesService();
+        String city = prefsService.getSavedCity();
+
+        if (city == null){
+            LocationService locationService = new LocationService();
+            city = locationService.detectCity();
+            prefsService.saveCity(city);
+        }
+
         WeatherAPI weatherAPI = new WeatherAPI();
-        WeatherResponse weather = weatherAPI.findAll();
+        WeatherResponse weather = weatherAPI.findByCity(city);
 
         String display = weather.name() + ": " + weather.main().temp() + "°F, "
-                + weather.weather().get(0).description();
+                + weather.weather().getFirst().description();
 
         Label label = new Label(display);
         StackPane root = new StackPane(label);
