@@ -32,12 +32,12 @@ public class WeatherAPI {
         }
     }
 
-    public WeatherResponse findByCity(String city) throws IOException, InterruptedException, CityNotFoundException {
+    public WeatherResponse findByCity(String city, String units) throws IOException, InterruptedException, CityNotFoundException {
         String encodedCity = URLEncoder.encode(city, StandardCharsets.UTF_8);
         String url = "https://api.openweathermap.org/data/2.5/weather?q="
-                + encodedCity + "&units=imperial&appid=" + apiKey;
-        //encodedCity fixes the error with more than one worded cities.
-        //essentially adds a safe character to inbetween words
+                + encodedCity + "&units=" + units + "&appid=" + apiKey;
+        //encodedCity fixes the error with more than one worded cities. essentially adds a safe character to inbetween words
+        //
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .GET()
