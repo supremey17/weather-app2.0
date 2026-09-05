@@ -48,8 +48,8 @@ public class WeatherAPI {
         if (response.statusCode() == 404) {
             throw new CityNotFoundException(city);
         }
-
-        if (response.statusCode() == 200) {
+        //flip to check for anything that isn't 200
+        if (response.statusCode() != 200) {
             throw new IOException("Man whoever built this app did a bad job! their (mistake: " + response.statusCode() + ")");
         }
         return objectMapper.readValue(response.body(), WeatherResponse.class);
