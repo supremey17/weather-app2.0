@@ -16,6 +16,7 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 public class App extends Application {
+    private final SlangService slangService = new SlangService();
     private final WeatherAPI weatherAPI = new WeatherAPI();
     private final PreferencesService prefsService = new PreferencesService();
 
@@ -71,9 +72,13 @@ public class App extends Application {
     private void runSearch(String city, Label resultLabel) {
         try {
             WeatherResponse weather = weatherAPI.findByCity(city, units);
+
             String unitSymbol = units.equals("imperial") ? "°F" : "°C";
+            String condition = weather.weather().getFirst().main();
+            String slang = slangService.getPhrase(condition);
+
             resultLabel.setText(weather.name() + ": " + weather.main().temp() + unitSymbol + ", "
-                    + weather.weather().getFirst().description());
+                    + weather.weather().getFirst().description() + " — " + slang);
             prefsService.saveCity(city);
         } catch (CityNotFoundException e) {
             resultLabel.setText("Yikes \"" + city + "\". was speeled wrong. First day on earth? ");
