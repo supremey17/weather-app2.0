@@ -1,7 +1,9 @@
 com/weatherapp/WeatherInfo.class
 com/weatherapp/WeatherResponse.class
+com/weatherapp/App.class
 WeatherAPI/WeatherAPI.class
 com/weatherapp/PreferencesService.class
 com/weatherapp/LocationService$IpLocation.class
+WeatherAPI/CityNotFoundException.class
 com/weatherapp/LocationService.class
 com/weatherapp/MainInfo.class
