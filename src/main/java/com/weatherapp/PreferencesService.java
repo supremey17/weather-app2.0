@@ -52,6 +52,6 @@ public class PreferencesService {
     }
     
     public void saveAdviceEnabled(boolean selected) {
-        prefs.put(ADVICE_KEY, CITY_KEY);
+        prefs.putBoolean(ADVICE_KEY, selected);
     }
 }
