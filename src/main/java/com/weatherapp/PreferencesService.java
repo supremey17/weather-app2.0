@@ -8,6 +8,7 @@ public class PreferencesService {
     private static final String HOME_CITY_KEY = "home_city";
     private static final String UNITS_KEY = "default_units";
     private static final String SLANG_KEY = "slang_enabled";
+    private static final String ADVICE_KEY = "advice_enabled";
 
 
     public PreferencesService() {
@@ -44,5 +45,13 @@ public class PreferencesService {
 
     public void saveSlangEnabled(boolean enabled){
         prefs.putBoolean(SLANG_KEY, enabled);
+    }
+
+    public boolean isAdviceEnabled() {
+        return prefs.getBoolean(ADVICE_KEY, true);
+    }
+    
+    public void saveAdviceEnabled(boolean selected) {
+        prefs.put(ADVICE_KEY, CITY_KEY);
     }
 }

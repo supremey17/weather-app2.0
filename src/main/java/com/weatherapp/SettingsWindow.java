@@ -37,6 +37,9 @@ public class SettingsWindow {
         CheckBox slangCheckBox = new CheckBox("Enable Gen Z slang phrases");
         slangCheckBox.setSelected(prefsService.isSlangEnabled());
 
+        CheckBox AdviceCheckBox = new CheckBox("Clothing Advisor");
+        AdviceCheckBox.setSelected(prefsService.isAdviceEnabled());
+
         Button saveButton = new Button("Save");
         saveButton.setOnAction(event -> {
             String units = celsius.isSelected() ? "metric" : "imperial";
@@ -44,10 +47,12 @@ public class SettingsWindow {
             prefsService.saveHomeCity(homeCityField.getText());
             prefsService.saveSlangEnabled(slangCheckBox.isSelected());
             onSaved.run();
+            prefsService.saveAdviceEnabled(AdviceCheckBox.isSelected());
+            onSaved.run();
             settingsStage.close();
         });
 
-        VBox root = new VBox(15, unitLabel, fahrenheit, celsius, homeCityLabel, homeCityField, slangCheckBox, saveButton);
+        VBox root = new VBox(15, unitLabel, fahrenheit, celsius, homeCityLabel, homeCityField, slangCheckBox, AdviceCheckBox, saveButton);
         root.setAlignment(Pos.CENTER_LEFT);
         root.setPadding(new Insets(20));
 

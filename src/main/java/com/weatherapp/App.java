@@ -99,12 +99,12 @@ public class App extends Application {
                     + "\n" + advice);
             prefsService.saveCity(city);
         } catch (CityNotFoundException e) {
-            resultLabel.setText("Yikes \"" + city + "\". was speeled wrong. First day on earth? ");
+            resultLabel.setText("Yikes \"" + city + "\". was spelled wrong. First day on earth? ");
         } catch (IOException e) {
             //System.out.println("Debug: " + e.getMessage()); //I use this whenever I don't know the error in the api or code.
             resultLabel.setText("TS not working twin");
         } catch (InterruptedException e) {
-            resultLabel.setText("Please try again i need to pay bills!");
+            resultLabel.setText("Oh hit a snag.");
         }
     }
 
