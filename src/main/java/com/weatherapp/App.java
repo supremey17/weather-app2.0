@@ -46,13 +46,11 @@ public class App extends Application {
         HBox searchRow = new HBox(10, cityInput, searchButton, unitToggle, settingsButton);
         searchRow.setAlignment(Pos.CENTER);
 
-        settingsButton.setOnAction(event -> {
-            SettingsWindow.show(prefsService, () -> {
-                units = prefsService.getDefaultUnits();
-                unitToggle.setText(units.equals("metric") ? "°C" : "°F");
-                runSearch(cityInput.getText(), resultLabel);
-            });
-        });
+        settingsButton.setOnAction(event -> SettingsWindow.show(prefsService, () -> {
+            units = prefsService.getDefaultUnits();
+            unitToggle.setText(units.equals("metric") ? "°C" : "°F");
+            runSearch(cityInput.getText(), resultLabel);
+        }));
 
         VBox root = new VBox(15, searchRow, resultLabel);
         root.setAlignment(Pos.CENTER);
@@ -91,17 +89,26 @@ public class App extends Application {
 
             String unitSymbol = units.equals("imperial") ? "°F" : "°C";
             String condition = weather.weather().getFirst().main();
-            String slang = slangService.getPhrase(condition);
-            String advice = clothingAdvisor.getAdvice(weather.main().temp(), weather.main().humidity(), condition, uvi);
+            String slang = prefsService.isSlangEnabled() ? slangService.getPhrase(condition) : "";
 
-            resultLabel.setText(weather.name() + ": " + weather.main().temp() + unitSymbol + ", "
-                    + weather.weather().getFirst().description() + " — " + slang
-                    + "\n" + advice);
+            String display = weather.name() + ": " + weather.main().temp() + unitSymbol + ", "
+                    + weather.weather().getFirst().description();
+
+            if (!slang.isEmpty()) {
+                display += " — " + slang;
+            }
+
+            if (prefsService.isAdviceEnabled()) {
+                String advice = clothingAdvisor.getAdvice(weather.main().temp(), weather.main().humidity(), condition, uvi);
+                display += "\n" + advice;
+            }
+
             prefsService.saveCity(city);
+            resultLabel.setText(display);
         } catch (CityNotFoundException e) {
             resultLabel.setText("Yikes \"" + city + "\". was spelled wrong. First day on earth? ");
         } catch (IOException e) {
-            //System.out.println("Debug: " + e.getMessage()); //I use this whenever I don't know the error in the api or code.
+            /* System.out.println("Debug: " + e.getMessage()); //I use this whenever I don't know the error in the api or code. */
             resultLabel.setText("TS not working twin");
         } catch (InterruptedException e) {
             resultLabel.setText("Oh hit a snag.");
