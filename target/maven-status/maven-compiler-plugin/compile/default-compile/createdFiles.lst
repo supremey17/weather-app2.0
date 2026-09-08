@@ -1,0 +1,14 @@
+com/weatherapp/WeatherInfo.class
+com/weatherapp/App.class
+com/weatherapp/SlangService.class
+com/weatherapp/OneCallResponse.class
+com/weatherapp/PreferencesService.class
+com/weatherapp/LocationService.class
+com/weatherapp/ClothingAdvisor.class
+com/weatherapp/WeatherResponse.class
+com/weatherapp/Coord.class
+WeatherAPI/WeatherAPI.class
+com/weatherapp/LocationService$IpLocation.class
+WeatherAPI/CityNotFoundException.class
+com/weatherapp/CurrentBlock.class
+com/weatherapp/MainInfo.class

@@ -57,7 +57,7 @@ public class WeatherAPI {
     }
 
     public double getUvIndex(double lat, double lon) throws IOException, InterruptedException{
-       String url = "https://api.openweathermap.org/data/4.0/onecall/current?lat=" + lat + "&lon" + lon + "&appid=" + apiKey;
+       String url = "https://api.openweathermap.org/data/4.0/onecall/current?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey;
 
        HttpRequest request = HttpRequest.newBuilder()
                .uri(URI.create(url))
@@ -66,7 +66,7 @@ public class WeatherAPI {
 
        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-       if (response.statusCode() == 404) {
+       if (response.statusCode() != 200) {
            throw new IOException("UV too high and broke our thing? (status" + response.statusCode() + ")");
        }
 
