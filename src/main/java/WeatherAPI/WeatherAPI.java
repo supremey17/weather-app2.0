@@ -71,6 +71,6 @@ public class WeatherAPI {
        }
 
        OneCallResponse oneCallResponse = objectMapper.readValue(response.body(), OneCallResponse.class);
-       return oneCall.current().uvi();
+       return oneCallResponse.current().uvi();
     }
 }

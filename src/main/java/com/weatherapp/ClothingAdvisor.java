@@ -11,16 +11,9 @@ public class ClothingAdvisor {
         } else if(tempF < 80){
             advice.append("It's HOT bring something lighter than my hopes");
         }
-        if(tempC < 40) {
-            advice.append("Gotta larp as a nyc hooligan bring a puffer Jacket");
-        } else if(tempC < 60){
-            advice.append("Grab a light jacket it'll be warm ");
-        } else if(tempC < 80){
-            advice.append("It's HOT bring something lighter than my hopes");
-        }
 
         if (humidity > 70){
-            advice.append("");
+            advice.append("Wear some Linen or lightweight cotton to keep cool");
         }
         if (condition.equalsIgnoreCase("Rain") || condition.equalsIgnoreCase("Drizzle")) {
             advice.append("Bring an umbrella. ");
@@ -35,7 +28,5 @@ public class ClothingAdvisor {
         }
 
         return advice.isEmpty() ? "Dress comfortably for the day." : advice.toString().trim();
+        }
     }
-
-    }
-}
