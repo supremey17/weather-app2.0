@@ -9,6 +9,7 @@ com/weatherapp/WeatherResponse.class
 com/weatherapp/Coord.class
 WeatherAPI/WeatherAPI.class
 com/weatherapp/LocationService$IpLocation.class
+com/weatherapp/SettingsWindow.class
 WeatherAPI/CityNotFoundException.class
 com/weatherapp/CurrentBlock.class
 com/weatherapp/MainInfo.class

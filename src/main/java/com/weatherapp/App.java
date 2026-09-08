@@ -19,14 +19,16 @@ public class App extends Application {
     private final SlangService slangService = new SlangService();
     private final WeatherAPI weatherAPI = new WeatherAPI();
     private final PreferencesService prefsService = new PreferencesService();
-
-    // Tracks the current unit system; imperial = °F, metric = °C
-    private String units = "imperial";
+    private String units; // no longer hardcoded to "imperial"
 
     @Override
     public void start(Stage stage) throws IOException, InterruptedException {
-        String initialCity = prefsService.getSavedCity();
+        units = prefsService.getDefaultUnits();
 
+        String initialCity = prefsService.getHomeCity();
+        if (initialCity == null || initialCity.isBlank()) {
+            initialCity = prefsService.getSavedCity();
+        }
         if (initialCity == null) {
             LocationService locationService = new LocationService();
             initialCity = locationService.detectCity();
@@ -35,11 +37,22 @@ public class App extends Application {
 
         TextField cityInput = new TextField(initialCity);
         Button searchButton = new Button("Search");
-        Button unitToggle = new Button("°F");
+        Button unitToggle = new Button(units.equals("metric") ? "°C" : "°F");
+        Button settingsButton = new Button("⚙");
         Label resultLabel = new Label();
+        resultLabel.setWrapText(true);
+        resultLabel.setMaxWidth(450);
 
-        HBox searchRow = new HBox(10, cityInput, searchButton, unitToggle);
+        HBox searchRow = new HBox(10, cityInput, searchButton, unitToggle, settingsButton);
         searchRow.setAlignment(Pos.CENTER);
+
+        settingsButton.setOnAction(event -> {
+            SettingsWindow.show(prefsService, () -> {
+                units = prefsService.getDefaultUnits();
+                unitToggle.setText(units.equals("metric") ? "°C" : "°F");
+                runSearch(cityInput.getText(), resultLabel);
+            });
+        });
 
         VBox root = new VBox(15, searchRow, resultLabel);
         root.setAlignment(Pos.CENTER);
@@ -88,7 +101,8 @@ public class App extends Application {
         } catch (CityNotFoundException e) {
             resultLabel.setText("Yikes \"" + city + "\". was speeled wrong. First day on earth? ");
         } catch (IOException e) {
-            resultLabel.setText("They're taking the wifi:(");
+            //System.out.println("Debug: " + e.getMessage()); //I use this whenever I don't know the error in the api or code.
+            resultLabel.setText("TS not working twin");
         } catch (InterruptedException e) {
             resultLabel.setText("Please try again i need to pay bills!");
         }
