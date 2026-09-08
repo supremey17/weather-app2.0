@@ -2,6 +2,7 @@ package WeatherAPI;
 
 //imports
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.weatherapp.OneCallResponse;
 import com.weatherapp.WeatherResponse;
 
 import java.net.URLEncoder;
@@ -53,5 +54,23 @@ public class WeatherAPI {
             throw new IOException("Man whoever built this app did a bad job! their (mistake: " + response.statusCode() + ")");
         }
         return objectMapper.readValue(response.body(), WeatherResponse.class);
+    }
+
+    public double getUvIndex(double lat, double lon) throws IOException, InterruptedException{
+       String url = "https://api.openweathermap.org/data/4.0/onecall/current?lat=" + lat + "&lon" + lon + "&appid=" + apiKey;
+
+       HttpRequest request = HttpRequest.newBuilder()
+               .uri(URI.create(url))
+               .GET()
+               .build();
+
+       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+       if (response.statusCode() == 404) {
+           throw new IOException("UV too high and broke our thing? (status" + response.statusCode() + ")");
+       }
+
+       OneCallResponse oneCallResponse = objectMapper.readValue(response.body(), OneCallResponse.class);
+       return oneCall.current().uvi();
     }
 }

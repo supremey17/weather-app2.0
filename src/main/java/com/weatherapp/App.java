@@ -69,16 +69,21 @@ public class App extends Application {
         stage.show();
     }
 
+    private final ClothingAdvisor clothingAdvisor = new ClothingAdvisor();
+
     private void runSearch(String city, Label resultLabel) {
         try {
             WeatherResponse weather = weatherAPI.findByCity(city, units);
+            double uvi = weatherAPI.getUvIndex(weather.coord().lat(), weather.coord().lon());
 
             String unitSymbol = units.equals("imperial") ? "°F" : "°C";
             String condition = weather.weather().getFirst().main();
             String slang = slangService.getPhrase(condition);
+            String advice = clothingAdvisor.getAdvice(weather.main().temp(), weather.main().humidity(), condition, uvi);
 
             resultLabel.setText(weather.name() + ": " + weather.main().temp() + unitSymbol + ", "
-                    + weather.weather().getFirst().description() + " — " + slang);
+                    + weather.weather().getFirst().description() + " — " + slang
+                    + "\n" + advice);
             prefsService.saveCity(city);
         } catch (CityNotFoundException e) {
             resultLabel.setText("Yikes \"" + city + "\". was speeled wrong. First day on earth? ");

@@ -7,5 +7,6 @@ import java.util.List;
 public record WeatherResponse(
         String name,
         List<WeatherInfo> weather,
-        MainInfo main
+        MainInfo main,
+        Coord coord
 ) {}
