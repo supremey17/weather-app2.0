@@ -3,6 +3,7 @@ com/weatherapp/App.class
 com/weatherapp/SlangService.class
 com/weatherapp/OneCallResponse.class
 com/weatherapp/PreferencesService.class
+com/weatherapp/AvatarView.class
 com/weatherapp/LocationService.class
 com/weatherapp/ClothingAdvisor.class
 com/weatherapp/WeatherResponse.class
