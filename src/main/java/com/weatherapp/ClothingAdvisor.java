@@ -12,7 +12,7 @@ public class ClothingAdvisor {
         } else if(tempF < 60){
             advice.append("Grab a light jacket it'll be warm ");
         } else if (tempF < 80){
-            advice.append("Cook my kid in the car weather");
+            advice.append("Very Hot ");
         }
 
         if (humidity > 70){
