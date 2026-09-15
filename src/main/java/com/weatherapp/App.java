@@ -8,6 +8,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -29,7 +30,9 @@ public class App extends Application {
     // these need to be fields, not local variables inside start(),
     // because runSearch() (a separate method) needs to update them too.
     private VBox root;
+    private HBox avatarRow;
     private Pane avatarPane;
+    private VBox adviceBox;
 
     @Override
     public void start(Stage stage) throws IOException, InterruptedException {
@@ -60,9 +63,18 @@ public class App extends Application {
         // just so there's something on screen before the first search runs.
         avatarPane = AvatarView.build(new ArrayList<>());
 
+        adviceBox = new VBox(8);
+        adviceBox.setPadding(new Insets(8));
+        ScrollPane adviceScroll = new ScrollPane(adviceBox);
+        adviceScroll.setPrefSize(220, 220);
+        adviceScroll.setFitToWidth(true);
+
+        avatarRow = new HBox(20, avatarPane, adviceScroll);
+        avatarRow.setAlignment(Pos.CENTER);
+
         // root is now assigned to the field (not "var root = ...")
-        // and avatarPane is added as one of its children.
-        root = new VBox(15, searchRow, avatarPane, resultLabel);
+        // and avatarRow (avatar + advice list) is added as one of its children.
+        root = new VBox(15, searchRow, avatarRow, resultLabel);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(20));
 
@@ -115,8 +127,10 @@ public class App extends Application {
             }
 
             if (prefsService.isAdviceEnabled()) {
-                String advice = clothingAdvisor.getAdvice(weather.main().temp(), weather.main().humidity(), condition, uvi);
-                display += "\n" + advice;
+                List<String> advice = clothingAdvisor.getAdvice(weather.main().temp(), weather.main().humidity(), condition, uvi);
+                setAdvice(advice);
+            } else {
+                adviceBox.getChildren().clear();
             }
 
             resultLabel.setText(display);
@@ -125,15 +139,28 @@ public class App extends Application {
             // get the outfit layers and swap in a freshly built avatar
             List<String> layers = clothingAdvisor.getOutfitLayers(weather.main().temp(), weather.main().humidity(), condition, uvi);
             Pane newAvatar = AvatarView.build(layers);
-            root.getChildren().set(root.getChildren().indexOf(avatarPane), newAvatar);
+            avatarRow.getChildren().set(avatarRow.getChildren().indexOf(avatarPane), newAvatar);
             avatarPane = newAvatar;
 
         } catch (CityNotFoundException e) {
             resultLabel.setText("Yikes \"" + city + "\". was speeled wrong. First day on earth? ");
+            adviceBox.getChildren().clear();
         } catch (IOException e) {
             resultLabel.setText("They're taking the wifi:(");
+            adviceBox.getChildren().clear();
         } catch (InterruptedException e) {
             resultLabel.setText("Please try again i need to pay bills!");
+            adviceBox.getChildren().clear();
+        }
+    }
+
+    private void setAdvice(List<String> advice) {
+        adviceBox.getChildren().clear();
+        for (String item : advice) {
+            Label label = new Label("• " + item);
+            label.setWrapText(true);
+            label.setMaxWidth(200);
+            adviceBox.getChildren().add(label);
         }
     }
 
