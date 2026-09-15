@@ -40,7 +40,7 @@ public class ClothingAdvisor {
             }
 
             if (condition.equalsIgnoreCase("Rain") || condition.equalsIgnoreCase("Drizzle")) {
-                layers.add("umbrella");
+                layers.add("Jacket");
             } else if (condition.equalsIgnoreCase("Snow")) {
                 layers.add("winter coat");
                 layers.add("boots");

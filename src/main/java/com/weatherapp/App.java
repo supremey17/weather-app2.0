@@ -26,7 +26,7 @@ public class App extends Application {
 
     private String units;
 
-    // NEW: these need to be fields, not local variables inside start(),
+    // these need to be fields, not local variables inside start(),
     // because runSearch() (a separate method) needs to update them too.
     private VBox root;
     private Pane avatarPane;
@@ -56,11 +56,11 @@ public class App extends Application {
         HBox searchRow = new HBox(10, cityInput, searchButton, unitToggle, settingsButton);
         searchRow.setAlignment(Pos.CENTER);
 
-        // NEW: build the avatar once at startup with an empty outfit,
+        // build the avatar once at startup with an empty outfit,
         // just so there's something on screen before the first search runs.
         avatarPane = AvatarView.build(new ArrayList<>());
 
-        // NEW: "root" is now assigned to the field (not "var root = ...")
+        // root is now assigned to the field (not "var root = ...")
         // and avatarPane is added as one of its children.
         root = new VBox(15, searchRow, avatarPane, resultLabel);
         root.setAlignment(Pos.CENTER);
@@ -122,7 +122,7 @@ public class App extends Application {
             resultLabel.setText(display);
             prefsService.saveCity(city);
 
-            // NEW: get the outfit layers and swap in a freshly built avatar
+            // get the outfit layers and swap in a freshly built avatar
             List<String> layers = clothingAdvisor.getOutfitLayers(weather.main().temp(), weather.main().humidity(), condition, uvi);
             Pane newAvatar = AvatarView.build(layers);
             root.getChildren().set(root.getChildren().indexOf(avatarPane), newAvatar);

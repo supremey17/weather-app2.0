@@ -12,7 +12,7 @@ public class AvatarView {
         StackPane pane = new StackPane();
         pane.setPrefSize(150, 220);
 
-        pane.getChildren().add(loadLayer("base_body"));
+        pane.getChildren().add(loadLayer("casual"));
 
         if (layers.contains("coat")) {
             pane.getChildren().add(loadLayer("coat"));
@@ -23,8 +23,8 @@ public class AvatarView {
         if (layers.contains("sunglasses")) {
             pane.getChildren().add(loadLayer("sunglasses"));
         }
-        if (layers.contains("umbrella")) {
-            pane.getChildren().add(loadLayer("umbrella"));
+        if (layers.contains("Jacket")) {
+            pane.getChildren().add(loadLayer("Jacket"));
         }
 
         return pane;
