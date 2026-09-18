@@ -9,17 +9,19 @@ public class ClothingAdvisor {
 
         if(tempF < 40) {
             advice.add("ITS MAD BRICK");
-        } else if(tempF < 60){
+        }
+        if(tempF < 60){
             advice.add("Grab a light jacket it'll be warm");
-        } else if (tempF < 80){
+        }
+        if (tempF > 80){
             advice.add("Very Hot");
         }
 
         if (humidity > 70){
-            advice.add("Wear some Linen or lightweight cotton to keep cool");
+            advice.add("Humid: Wear some Linen or lightweight cotton to keep cool");
         }
         if (condition.equalsIgnoreCase("Rain") || condition.equalsIgnoreCase("Drizzle")) {
-            advice.add("tinkle: bring raincoat");
+            advice.add("shower imminent: bring raincoat");
         } else if (condition.equalsIgnoreCase("Snow")) {
             advice.add("Snow lingering, Wear boots and a winter coat.");
         }

@@ -22,3 +22,5 @@ Things to-do:
 
      Clicking the unit toggle re-fetches from the API rather than just relabeling the number — this is necessary because
      imperial vs metric changes the actual numeric value OpenWeatherMap returns, not just the unit label
+
+     Add spf sunscreen recommendations for different uv levels.
