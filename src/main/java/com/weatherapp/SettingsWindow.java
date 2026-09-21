@@ -40,6 +40,9 @@ public class SettingsWindow {
         CheckBox AdviceCheckBox = new CheckBox("Clothing Advisor");
         AdviceCheckBox.setSelected(prefsService.isAdviceEnabled());
 
+        CheckBox AvatarCheckBox = new CheckBox("Avatar");
+        AvatarCheckBox.setSelected(prefsService.isAvatarEnabled());
+
         Button saveButton = new Button("Save");
         saveButton.setOnAction(event -> {
             String units = celsius.isSelected() ? "metric" : "imperial";
@@ -49,10 +52,12 @@ public class SettingsWindow {
             onSaved.run();
             prefsService.saveAdviceEnabled(AdviceCheckBox.isSelected());
             onSaved.run();
+            prefsService.saveAvatarEnabled(AvatarCheckBox.isSelected());
+            onSaved.run();
             settingsStage.close();
         });
 
-        VBox root = new VBox(15, unitLabel, fahrenheit, celsius, homeCityLabel, homeCityField, slangCheckBox, AdviceCheckBox, saveButton);
+        VBox root = new VBox(15, unitLabel, fahrenheit, celsius, homeCityLabel, homeCityField, slangCheckBox, AdviceCheckBox, AvatarCheckBox, saveButton);
         root.setAlignment(Pos.CENTER_LEFT);
         root.setPadding(new Insets(20));
 

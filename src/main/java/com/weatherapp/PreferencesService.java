@@ -9,6 +9,7 @@ public class PreferencesService {
     private static final String UNITS_KEY = "default_units";
     private static final String SLANG_KEY = "slang_enabled";
     private static final String ADVICE_KEY = "advice_enabled";
+    private static final String AVATAR_KEY = "avatar_enabled";
 
 
     public PreferencesService() {
@@ -54,4 +55,8 @@ public class PreferencesService {
     public void saveAdviceEnabled(boolean selected) {
         prefs.putBoolean(ADVICE_KEY, selected);
     }
+
+    public boolean isAvatarEnabled() {return prefs.getBoolean(AVATAR_KEY, true);}
+
+    public void saveAvatarEnabled(boolean selected) {prefs.putBoolean(AVATAR_KEY, selected);}
 }
