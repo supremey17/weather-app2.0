@@ -1,5 +1,8 @@
 package com.weatherapp;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.prefs.Preferences;
 
 public class PreferencesService {
@@ -7,10 +10,26 @@ public class PreferencesService {
     private static final String CITY_KEY = "last_city";
     private static final String HOME_CITY_KEY = "home_city";
     private static final String UNITS_KEY = "default_units";
-    private static final String SLANG_KEY = "slang_enabled";
+    private static final String SAVED_CITIES_KEY = "saved_cities";
+    private static final String DELIMITER = ";;";
     private static final String ADVICE_KEY = "advice_enabled";
     private static final String AVATAR_KEY = "avatar_enabled";
 
+    public List<String> getSavedCities() {
+        String raw = prefs.get(SAVED_CITIES_KEY, "");
+        if (raw.isBlank()){
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(Arrays.asList(raw.split(DELIMITER)));
+    }
+
+    public void addSavedCity(String city) {
+        List<String> cities = getSavedCities();
+        if (!cities.contains(city)) {
+            cities.add(city);
+            prefs.put(SAVED_CITIES_KEY, String.join(DELIMITER, cities));
+        }
+    }
 
     public PreferencesService() {
         prefs = Preferences.userNodeForPackage(this.getClass());
@@ -40,14 +59,6 @@ public class PreferencesService {
         prefs.put(UNITS_KEY, units);
     }
 
-    public boolean isSlangEnabled() {
-        return prefs.getBoolean(SLANG_KEY, true);
-    }
-
-    public void saveSlangEnabled(boolean enabled){
-        prefs.putBoolean(SLANG_KEY, enabled);
-    }
-
     public boolean isAdviceEnabled() {
         return prefs.getBoolean(ADVICE_KEY, true);
     }
@@ -59,4 +70,10 @@ public class PreferencesService {
     public boolean isAvatarEnabled() {return prefs.getBoolean(AVATAR_KEY, true);}
 
     public void saveAvatarEnabled(boolean selected) {prefs.putBoolean(AVATAR_KEY, selected);}
+
+    public void removeSavedCity(String city) {
+        List<String> cities = getSavedCities();
+        cities.remove(city);
+        prefs.put(SAVED_CITIES_KEY, String.join(DELIMITER, cities));
+    }
 }

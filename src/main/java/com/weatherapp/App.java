@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class App extends Application {
-    private final SlangService slangService = new SlangService();
     private final WeatherAPI weatherAPI = new WeatherAPI();
     private final PreferencesService prefsService = new PreferencesService();
     private final ClothingAdvisor clothingAdvisor = new ClothingAdvisor();
@@ -49,6 +48,8 @@ public class App extends Application {
         }
 
         TextField cityInput = new TextField(initialCity);
+        Button saveCityButton = new Button("*");
+        Button citiesButton = new Button("Cities");
         Button searchButton = new Button("Search");
         Button unitToggle = new Button(units.equals("metric") ? "°C" : "°F");
         Button settingsButton = new Button("⚙");
@@ -56,7 +57,7 @@ public class App extends Application {
         resultLabel.setWrapText(true);
         resultLabel.setMaxWidth(450);
 
-        HBox searchRow = new HBox(10, cityInput, searchButton, unitToggle, settingsButton);
+        HBox searchRow = new HBox(10, cityInput, searchButton, unitToggle,saveCityButton, citiesButton, settingsButton);
         searchRow.setAlignment(Pos.CENTER);
 
         // build the avatar once at startup with an empty outfit,
@@ -83,6 +84,15 @@ public class App extends Application {
                 units = prefsService.getDefaultUnits();
                 unitToggle.setText(units.equals("metric") ? "°C" : "°F");
                 runSearch(cityInput.getText(), resultLabel);
+            });
+        });
+
+        saveCityButton.setOnAction(event -> prefsService.addSavedCity(cityInput.getText()));
+
+        citiesButton.setOnAction(event -> {
+            SavedCitiesWindow.show(prefsService, city -> {
+                cityInput.setText(city);
+                runSearch(city, resultLabel);
             });
         });
 
@@ -117,14 +127,10 @@ public class App extends Application {
             String unitSymbol = units.equals("imperial") ? "°F" : "°C";
             String condition = weather.weather().getFirst().main();
 
-            String slang = prefsService.isSlangEnabled() ? slangService.getPhrase(condition) : "";
 
             String display = weather.name() + ": " + weather.main().temp() + unitSymbol + ", "
                     + weather.weather().getFirst().description();
 
-            if (!slang.isEmpty()) {
-                display += " — " + slang;
-            }
 
             if (prefsService.isAdviceEnabled()) {
                 List<String> advice = clothingAdvisor.getAdvice(weather.main().temp(), weather.main().humidity(), condition, uvi);

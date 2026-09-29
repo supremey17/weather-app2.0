@@ -34,8 +34,6 @@ public class SettingsWindow {
         TextField homeCityField = new TextField(prefsService.getHomeCity());
         homeCityField.setPromptText("e.g. Rochester");
 
-        CheckBox slangCheckBox = new CheckBox("Enable Gen Z slang phrases");
-        slangCheckBox.setSelected(prefsService.isSlangEnabled());
 
         CheckBox AdviceCheckBox = new CheckBox("Clothing Advisor");
         AdviceCheckBox.setSelected(prefsService.isAdviceEnabled());
@@ -48,8 +46,6 @@ public class SettingsWindow {
             String units = celsius.isSelected() ? "metric" : "imperial";
             prefsService.saveDefaultUnits(units);
             prefsService.saveHomeCity(homeCityField.getText());
-            prefsService.saveSlangEnabled(slangCheckBox.isSelected());
-            onSaved.run();
             prefsService.saveAdviceEnabled(AdviceCheckBox.isSelected());
             onSaved.run();
             prefsService.saveAvatarEnabled(AvatarCheckBox.isSelected());
@@ -57,7 +53,7 @@ public class SettingsWindow {
             settingsStage.close();
         });
 
-        VBox root = new VBox(15, unitLabel, fahrenheit, celsius, homeCityLabel, homeCityField, slangCheckBox, AdviceCheckBox, AvatarCheckBox, saveButton);
+        VBox root = new VBox(15, unitLabel, fahrenheit, celsius, homeCityLabel, homeCityField, AdviceCheckBox, AvatarCheckBox, saveButton);
         root.setAlignment(Pos.CENTER_LEFT);
         root.setPadding(new Insets(20));
 
