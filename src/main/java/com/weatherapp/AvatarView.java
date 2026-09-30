@@ -5,42 +5,36 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 
 import java.util.List;
-import java.util.Objects;
+import java.net.URL;
 
 public class AvatarView {
     public static StackPane build(List<String> layers) {
         StackPane pane = new StackPane();
         pane.setPrefSize(150, 220);
 
-        pane.getChildren().add(loadLayer("casual"));
+        addLayer(pane, "casual");
 
-        if (layers.contains("hot")){
-            pane.getChildren().addAll(loadLayer("hot"));
-        }
-
-        if (layers.contains("coat")) {
-            pane.getChildren().add(loadLayer("coat"));
-        }
-        if (layers.contains("boots")) {
-            pane.getChildren().add(loadLayer("boots"));
-        }
-        if (layers.contains("sunglasses")) {
-            pane.getChildren().add(loadLayer("sunglasses"));
-        }
-        if (layers.contains("Jacket")) {
-            pane.getChildren().add(loadLayer("Jacket"));
+        // order matters: later layers draw on top
+        for (String name : List.of("hot", "coat", "boots", "sunglasses", "Jacket")) {
+            if (layers.contains(name)) {
+                addLayer(pane, name);
+            }
         }
 
         return pane;
     }
 
-    private static ImageView loadLayer(String name){
-        Image image = new Image(Objects.requireNonNull(
-                AvatarView.class.getResource("/images/" + name + ".png")).toExternalForm());
+    // skips layers that don't have a PNG yet instead of crashing
+    private static void addLayer(StackPane pane, String name){
+        URL url = AvatarView.class.getResource("/images/" + name + ".png");
+        if (url == null) {
+            return;
+        }
+        Image image = new Image(url.toExternalForm());
         ImageView imageView = new ImageView(image);
         imageView.setFitHeight(220);
         imageView.setFitWidth(150);
         imageView.setPreserveRatio(false);
-        return imageView;
+        pane.getChildren().add(imageView);
     }
 }

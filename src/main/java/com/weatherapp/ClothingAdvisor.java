@@ -7,11 +7,11 @@ public class ClothingAdvisor {
     public List<String> getAdvice(double tempF, int humidity, String condition, double uvi){
         List<String> advice = new ArrayList<>();
 
+        // thresholds are in Fahrenheit, App converts Celsius before calling this
         if(tempF < 40) {
             advice.add("ITS MAD BRICK");
-        }
-        if(tempF < 60){
-            advice.add("Grab a light jacket it'll be warm");
+        } else if(tempF < 60){
+            advice.add("Grab a light jacket it's chilly");
         }
         if (tempF > 80){
             advice.add("Very Hot");
@@ -44,14 +44,14 @@ public class ClothingAdvisor {
                 layers.add("hot");
             }
 
-            if (tempF < 60) {
+            if (tempF < 60 || condition.equalsIgnoreCase("Snow")) {
                 layers.add("coat");
             }
 
             if (condition.equalsIgnoreCase("Rain") || condition.equalsIgnoreCase("Drizzle")) {
                 layers.add("Jacket");
             } else if (condition.equalsIgnoreCase("Snow")) {
-                layers.add("winter coat");
+                // no boots.png yet, AvatarView skips layers without an image
                 layers.add("boots");
             }
 
