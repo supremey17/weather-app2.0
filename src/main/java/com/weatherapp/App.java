@@ -63,6 +63,7 @@ public class App extends Application {
         // build the avatar once at startup with an empty outfit,
         // just so there's something on screen before the first search runs.
         avatarPane = AvatarView.build(new ArrayList<>());
+        applyAvatarVisibility();
 
         adviceBox = new VBox(8);
         adviceBox.setPadding(new Insets(8));
@@ -83,6 +84,7 @@ public class App extends Application {
             SettingsWindow.show(prefsService, () -> {
                 units = prefsService.getDefaultUnits();
                 unitToggle.setText(units.equals("metric") ? "°C" : "°F");
+                applyAvatarVisibility();
                 runSearch(cityInput.getText(), resultLabel);
             });
         });
@@ -122,10 +124,19 @@ public class App extends Application {
     private void runSearch(String city, Label resultLabel) {
         try {
             WeatherResponse weather = weatherAPI.findByCity(city, units);
-            double uvi = weatherAPI.getUvIndex(weather.coord().lat(), weather.coord().lon());
+            // UV uses One Call 4.0, which needs a separate OWM subscription.
+            // If it fails, still show the weather and just skip the UV advice.
+            double uvi;
+            try {
+                uvi = weatherAPI.getUvIndex(weather.coord().lat(), weather.coord().lon());
+            } catch (IOException e) {
+                uvi = 0;
+            }
 
             String unitSymbol = units.equals("imperial") ? "°F" : "°C";
             String condition = weather.weather().getFirst().main();
+            // ClothingAdvisor thresholds are Fahrenheit
+            double tempF = units.equals("metric") ? weather.main().temp() * 9 / 5 + 32 : weather.main().temp();
 
 
             String display = weather.name() + ": " + weather.main().temp() + unitSymbol + ", "
@@ -133,7 +144,7 @@ public class App extends Application {
 
 
             if (prefsService.isAdviceEnabled()) {
-                List<String> advice = clothingAdvisor.getAdvice(weather.main().temp(), weather.main().humidity(), condition, uvi);
+                List<String> advice = clothingAdvisor.getAdvice(tempF, weather.main().humidity(), condition, uvi);
                 setAdvice(advice);
             } else {
                 adviceBox.getChildren().clear();
@@ -143,10 +154,11 @@ public class App extends Application {
             prefsService.saveCity(city);
 
             // get the outfit layers and swap in a freshly built avatar
-            List<String> layers = clothingAdvisor.getOutfitLayers(weather.main().temp(), weather.main().humidity(), condition, uvi);
+            List<String> layers = clothingAdvisor.getOutfitLayers(tempF, weather.main().humidity(), condition, uvi);
             Pane newAvatar = AvatarView.build(layers);
             avatarRow.getChildren().set(avatarRow.getChildren().indexOf(avatarPane), newAvatar);
             avatarPane = newAvatar;
+            applyAvatarVisibility();
 
         } catch (CityNotFoundException e) {
             resultLabel.setText("Yikes \"" + city + "\". was speeled wrong. First day on earth? ");
@@ -158,6 +170,13 @@ public class App extends Application {
             resultLabel.setText("Please try again i need to pay bills!");
             adviceBox.getChildren().clear();
         }
+    }
+
+    // hides the avatar (and frees its space) when it's turned off in Settings
+    private void applyAvatarVisibility() {
+        boolean show = prefsService.isAvatarEnabled();
+        avatarPane.setVisible(show);
+        avatarPane.setManaged(show);
     }
 
     private void setAdvice(List<String> advice) {
