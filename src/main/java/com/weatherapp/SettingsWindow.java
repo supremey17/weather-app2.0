@@ -47,7 +47,6 @@ public class SettingsWindow {
             prefsService.saveDefaultUnits(units);
             prefsService.saveHomeCity(homeCityField.getText());
             prefsService.saveAdviceEnabled(AdviceCheckBox.isSelected());
-            onSaved.run();
             prefsService.saveAvatarEnabled(AvatarCheckBox.isSelected());
             onSaved.run();
             settingsStage.close();
