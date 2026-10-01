@@ -4,17 +4,19 @@ enum WeatherError: Error {
     case missingAPIKey
     case cityNotFound(String)
     case badStatus(Int)
+    case rateLimited
 }
 
 /// Port of WeatherAPI.java: talks to OpenWeatherMap with URLSession + JSONDecoder.
 struct WeatherService {
     private let apiKey: String
     private let session: URLSession
+    private let gate: RequestGate
     private let decoder = JSONDecoder()
 
     /// Reads the key from Info.plist (OWMAPIKey), which is filled in from Config/Secrets.xcconfig.
     /// Phones have no environment variables, so this replaces System.getenv("OWM_API_KEY").
-    init(session: URLSession = .shared) throws {
+    init(session: URLSession = .shared, gate: RequestGate = .shared) throws {
         let key = (Bundle.main.object(forInfoDictionaryKey: "OWMAPIKey") as? String)?
             .trimmingCharacters(in: .whitespaces) ?? ""
         if key.isEmpty || key.hasPrefix("$(") {
@@ -22,6 +24,7 @@ struct WeatherService {
         }
         self.apiKey = key
         self.session = session
+        self.gate = gate
     }
 
     func findByCity(_ city: String, units: Units) async throws -> WeatherResponse {
@@ -40,8 +43,8 @@ struct WeatherService {
     /// Used instead of the ip-api.com lookup: the phone's own location, and OWM returns the city name.
     func findByCoordinates(lat: Double, lon: Double, units: Units) async throws -> WeatherResponse {
         let url = makeURL(path: "/data/2.5/weather", query: [
-            "lat": String(lat),
-            "lon": String(lon),
+            "lat": rounded(lat),
+            "lon": rounded(lon),
             "units": units.rawValue,
         ])
         return try await get(url)
@@ -49,11 +52,16 @@ struct WeatherService {
 
     func uvIndex(lat: Double, lon: Double) async throws -> Double {
         let url = makeURL(path: "/data/4.0/onecall/current", query: [
-            "lat": String(lat),
-            "lon": String(lon),
+            "lat": rounded(lat),
+            "lon": rounded(lon),
         ])
         let response: OneCallResponse = try await get(url)
         return response.data.first?.uvi ?? 0
+    }
+
+    /// Two decimals is about 1 km, close enough for weather, and lets nearby lookups share a cache entry.
+    private func rounded(_ coordinate: Double) -> String {
+        String(format: "%.2f", coordinate)
     }
 
     private func makeURL(path: String, query: [String: String]) -> URL {
@@ -61,16 +69,24 @@ struct WeatherService {
         components.scheme = "https"
         components.host = "api.openweathermap.org"
         components.path = path
-        components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        // Sorted so the same request always builds the same URL (and the same cache key).
+        components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
             + [URLQueryItem(name: "appid", value: apiKey)]
         return components.url!
     }
 
     private func get<T: Decodable>(_ url: URL) async throws -> T {
-        let (data, response) = try await session.data(from: url)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard status == 200 else {
-            throw WeatherError.badStatus(status)
+        // Lowercased so "Austin" and "austin" share a cache entry.
+        let data = try await gate.data(for: url.absoluteString.lowercased()) { [session] in
+            let (data, response) = try await session.data(from: url)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if status == 429 {
+                throw WeatherError.rateLimited
+            }
+            guard status == 200 else {
+                throw WeatherError.badStatus(status)
+            }
+            return data
         }
         return try decoder.decode(T.self, from: data)
     }
