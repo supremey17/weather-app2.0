@@ -18,6 +18,24 @@ enum AvatarImageProcessing {
         return CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
     }
 
+    /// The full pipeline from a picked photo to the stored avatar: downscale, cut the background
+    /// out (`AvatarBackgroundRemoval`), then pixelate. Downscaling first keeps the comparatively
+    /// expensive segmentation step cheap, and — as a side effect of redrawing through
+    /// `UIGraphicsImageRenderer`/`UIImage.draw(in:)` — bakes in the photo's EXIF orientation, so
+    /// Vision and Core Image downstream don't have to special-case a rotated photo.
+    static func makeAvatar(from image: UIImage) -> UIImage {
+        let downscaled = resize(image, to: targetSize(for: image.size)) ?? image
+        let cutout = AvatarBackgroundRemoval.removingBackground(from: downscaled)
+        return pixelate(cutout)
+    }
+
+    /// Bakes in the photo's EXIF orientation without changing its size. Used before running
+    /// Vision on a photo that hasn't gone through `makeAvatar` yet (the pose-check preview), so
+    /// landmark positions aren't read against a sideways or upside-down buffer.
+    static func normalizingOrientation(_ image: UIImage) -> UIImage {
+        resize(image, to: image.size) ?? image
+    }
+
     /// Downscales, then applies a pixellate filter. Falls back to a plain downscale if Core Image
     /// can't produce an output (e.g. a corrupt image) rather than throwing away the photo.
     static func pixelate(_ image: UIImage) -> UIImage {

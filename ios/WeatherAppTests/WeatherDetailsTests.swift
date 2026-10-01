@@ -93,7 +93,8 @@ struct WeatherDetailsTests {
 
     @Test func pressureTextConvertsToInHgForImperial() {
         #expect(WeatherDetails.pressureText(hPa: 1013, units: .metric) == "1013 hPa")
-        #expect(WeatherDetails.pressureText(hPa: 1013, units: .imperial) == "29.92 inHg")
+        // 1013 * 0.02953 = 29.9139..., rounds to 29.91.
+        #expect(WeatherDetails.pressureText(hPa: 1013, units: .imperial) == "29.91 inHg")
     }
 
     // MARK: AirQualitySummary
@@ -126,9 +127,10 @@ struct WeatherDetailsTests {
         // America/Los_Angeles is UTC-8 (ignoring DST, which doesn't matter here since we pass the offset
         // directly as `timezone` seconds, matching what OWM returns for a given city).
         let offsetSeconds = -8 * 3600
-        // 2024-01-01 23:00 UTC == 2024-01-01 15:00 PST (same local day).
-        // 2024-01-02 09:00 UTC == 2024-01-02 01:00 PST (the next local day, despite being close in UTC time).
-        let base = 1704146400 // 2024-01-01 22:00:00 UTC
+        // 2024-01-02 07:00 UTC == 2024-01-01 23:00 PST (local day Jan 1).
+        // 2024-01-02 10:00 UTC == 2024-01-02 02:00 PST (local day Jan 2, 3 hours later in UTC
+        // but across the PST midnight boundary that falls at 08:00 UTC).
+        let base = 1704178800 // 2024-01-02 07:00:00 UTC
         let items = [
             ForecastItem(dt: base, main: ForecastMain(temp: 50, tempMin: 45, tempMax: 55), weather: [WeatherInfo(main: "Clear", description: "clear sky", icon: "01d")], pop: 0.1, wind: nil),
             ForecastItem(dt: base + 3 * 3600, main: ForecastMain(temp: 48, tempMin: 40, tempMax: 52), weather: [WeatherInfo(main: "Clouds", description: "cloudy", icon: "02d")], pop: 0.3, wind: nil),

@@ -46,7 +46,7 @@ enum AvatarBackgroundRemoval {
         // the cutout lines up with the original pixels.
         let scaleX = original.extent.width / mask.extent.width
         let scaleY = original.extent.height / mask.extent.height
-        mask = mask.transformed(by: CGAffineTransform(scaleX: scaleX, scaleY: scaleY))
+        mask = mask.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
 
         let thresholdFilter = CIFilter.colorThreshold()
         thresholdFilter.inputImage = mask

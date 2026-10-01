@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import WeatherApp
 
@@ -82,7 +83,14 @@ struct CitySuggestionLogicTests {
         #expect(CitySuggestionLogic.owmQuery(title: "Narnia City", subtitle: "Narnia") == "Narnia City")
     }
 
-    @Test func owmQueryStripsCommasFromTitle() {
-        #expect(CitySuggestionLogic.owmQuery(title: "Austin, TX", subtitle: "United States") == "Austin TX,US")
+    @Test func owmQueryDropsStateFoldedIntoTitle() {
+        // MapKit sometimes puts the state in the title rather than the subtitle.
+        #expect(CitySuggestionLogic.owmQuery(title: "Austin, TX", subtitle: "United States") == "Austin,US")
+    }
+
+    /// Regression test: picking the Honolulu suggestion used to search for "Honolulu HI,US",
+    /// which OWM couldn't find, because the state ended up jammed into the city name.
+    @Test func owmQueryHandlesHonoluluWhereMapKitFoldsStateIntoTitle() {
+        #expect(CitySuggestionLogic.owmQuery(title: "Honolulu, HI", subtitle: "United States") == "Honolulu,US")
     }
 }

@@ -59,6 +59,25 @@ struct WeatherService {
         return response.data.first?.uvi ?? 0
     }
 
+    /// Doesn't depend on units, so toggling °F/°C is a cache hit for this one.
+    func airQuality(lat: Double, lon: Double) async throws -> AirSample? {
+        let url = makeURL(path: "/data/2.5/air_pollution", query: [
+            "lat": rounded(lat),
+            "lon": rounded(lon),
+        ])
+        let response: AirPollutionResponse = try await get(url)
+        return response.list.first
+    }
+
+    func forecast(lat: Double, lon: Double, units: Units) async throws -> ForecastResponse {
+        let url = makeURL(path: "/data/2.5/forecast", query: [
+            "lat": rounded(lat),
+            "lon": rounded(lon),
+            "units": units.rawValue,
+        ])
+        return try await get(url)
+    }
+
     /// Two decimals is about 1 km, close enough for weather, and lets nearby lookups share a cache entry.
     private func rounded(_ coordinate: Double) -> String {
         String(format: "%.2f", coordinate)

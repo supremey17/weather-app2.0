@@ -35,28 +35,6 @@ struct ClothingAdvisor {
         return advice
     }
 
-    func outfitLayers(tempF: Double, humidity: Int, condition: String, uvi: Double) -> [String] {
-        var layers: [String] = []
-
-        if tempF > 80 {
-            layers.append("hot")
-        }
-
-        if tempF < 60 {
-            layers.append("coat")
-        }
-
-        if isRain(condition) {
-            layers.append("Jacket")
-        } else if condition.caseInsensitiveCompare("Snow") == .orderedSame {
-            if !layers.contains("coat") {
-                layers.append("coat")
-            }
-            layers.append("boots") // no image yet; AvatarView skips it
-        }
-        return layers
-    }
-
     private func isRain(_ condition: String) -> Bool {
         condition.caseInsensitiveCompare("Rain") == .orderedSame
             || condition.caseInsensitiveCompare("Drizzle") == .orderedSame

@@ -53,7 +53,7 @@ struct WeatherDetailsView: View {
                         .font(.headline)
                 } icon: {
                     Circle()
-                        .fill(Color(air.colorName))
+                        .fill(aqiColor(air.colorName))
                         .frame(width: 12, height: 12)
                 }
 
@@ -129,6 +129,21 @@ struct WeatherDetailsView: View {
                     .accessibilityLabel("\(day.day): low \(day.low), high \(day.high), \(day.chanceOfRain)% chance of rain")
                 }
             }
+        }
+    }
+
+    /// `WeatherDetails.swift` is plain logic with no SwiftUI import, so it hands back a word
+    /// ("green", "red", ...) rather than a `Color`; this is the one place that maps it to an
+    /// actual system color instead of relying on `Color(_:)`'s asset-catalog lookup, which would
+    /// silently fail since no such named color sets exist in Assets.xcassets.
+    private func aqiColor(_ name: String) -> Color {
+        switch name {
+        case "green": return .green
+        case "yellow": return .yellow
+        case "orange": return .orange
+        case "red": return .red
+        case "purple": return .purple
+        default: return .gray
         }
     }
 

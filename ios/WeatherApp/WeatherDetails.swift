@@ -136,7 +136,9 @@ enum WeatherDetails {
             let chance = items.map(\.pop).max() ?? 0
             let condition = mostCommonCondition(items)
 
-            let dayLabel = day.formatted(.dateTime.weekday(.abbreviated).locale(Locale(identifier: "en_US_POSIX")).calendar(calendar))
+            let style = Date.FormatStyle(locale: Locale(identifier: "en_US_POSIX"), calendar: calendar, timeZone: timeZone)
+                .weekday(.abbreviated)
+            let dayLabel = day.formatted(style)
             let epoch = Int(day.timeIntervalSince1970)
 
             return DailyForecast(
@@ -201,7 +203,9 @@ enum WeatherDetails {
 
     static func timeText(epochSeconds: Int, timeZone: TimeZone) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(epochSeconds))
-        return date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "en_US_POSIX")).calendar(.init(identifier: .gregorian)).timeZone(timeZone))
+        let style = Date.FormatStyle(locale: Locale(identifier: "en_US_POSIX"), calendar: Calendar(identifier: .gregorian), timeZone: timeZone)
+            .hour().minute()
+        return date.formatted(style)
     }
 
     /// Maps an OWM condition word to a local SF Symbol. Deliberately not using OWM's icon URLs:

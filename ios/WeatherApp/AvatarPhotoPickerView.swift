@@ -14,6 +14,7 @@ struct AvatarPhotoPickerView: View {
     @State private var previewImage: UIImage?
     @State private var poseSuggestion: String?
     @State private var isCheckingPose = false
+    @State private var isSavingPhoto = false
 
     var body: some View {
         NavigationStack {
@@ -25,6 +26,8 @@ struct AvatarPhotoPickerView: View {
 
                 if isCheckingPose {
                     ProgressView("Checking pose…")
+                } else if isSavingPhoto {
+                    ProgressView("Cutting out the background…")
                 } else if let poseSuggestion {
                     Text(poseSuggestion)
                         .font(.footnote)
@@ -37,10 +40,15 @@ struct AvatarPhotoPickerView: View {
 
                 if let previewImage {
                     Button("Use This Photo") {
-                        model.setAvatarPhoto(previewImage)
-                        dismiss()
+                        Task {
+                            isSavingPhoto = true
+                            await model.setAvatarPhoto(previewImage)
+                            isSavingPhoto = false
+                            dismiss()
+                        }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(isSavingPhoto)
                 }
 
                 if model.hasAvatarPhoto {
@@ -87,7 +95,10 @@ struct AvatarPhotoPickerView: View {
         poseSuggestion = nil
         guard let item else { return }
         guard let data = try? await item.loadTransferable(type: Data.self),
-              let image = UIImage(data: data) else { return }
+              let rawImage = UIImage(data: data) else { return }
+        // Normalized once here so the pose check reads real shoulder/wrist positions instead of
+        // a sideways buffer; `setAvatarPhoto` re-normalizes harmlessly as part of its own pipeline.
+        let image = AvatarImageProcessing.normalizingOrientation(rawImage)
         previewImage = image
 
         guard let cgImage = image.cgImage else { return }
