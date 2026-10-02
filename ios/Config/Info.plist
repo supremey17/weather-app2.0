@@ -2,7 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>OWMAPIKey</key>
-	<string>$(OWM_API_KEY)</string>
+    <key>OWMAPIKey</key>
+    <string>$(OWM_API_KEY)</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Weather Journey uses your approximate location once to show local weather. Your coordinates are sent to the weather provider only to retrieve that forecast.</string>
 </dict>
 </plist>

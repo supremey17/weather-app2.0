@@ -1,53 +1,82 @@
 import SwiftUI
 
-/// Shows everything OWM gives us beyond the headline temperature: current-conditions tiles, air
-/// quality, an hourly strip and a 5-day outlook. All values are precomputed by `WeatherDetails`
-/// (see `WeatherViewModel.load`), so this view does no parsing or date math while redrawing.
+/// Shows precomputed weather details in the shared pixel dashboard language.
 struct WeatherDetailsView: View {
     let details: WeatherDetailsResult
+    let theme: PixelWeatherTheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            currentSection
+            CurrentMetricsSection(items: details.current, theme: theme)
             if let air = details.air {
-                airQualitySection(air)
+                AirQualitySection(air: air, theme: theme)
             }
             if !details.hourly.isEmpty {
-                hourlySection
+                HourlyForecastSection(hours: details.hourly, theme: theme)
             }
             if !details.daily.isEmpty {
-                dailySection
+                DailyForecastSection(days: details.daily, theme: theme)
             }
         }
     }
+}
 
-    private var currentSection: some View {
-        sectionCard(title: "Right now") {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(details.current) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label {
-                            Text(verbatim: item.label)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } icon: {
-                            Image(systemName: item.symbol)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(verbatim: item.value)
-                            .font(.headline)
+private struct CurrentMetricsSection: View {
+    let items: [DetailItem]
+    let theme: PixelWeatherTheme
+
+    var body: some View {
+        PixelPanel(theme: theme) {
+            VStack(alignment: .leading, spacing: 12) {
+                PixelSectionTitle(title: "Right now", symbol: "gauge.with.dots.needle.67percent", theme: theme)
+
+                LazyVGrid(
+                    columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                    spacing: 10
+                ) {
+                    ForEach(items) { item in
+                        MetricTile(item: item, theme: theme)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(item.label): \(item.value)")
                 }
             }
         }
     }
+}
 
-    private func airQualitySection(_ air: AirQualitySummary) -> some View {
-        sectionCard(title: "Air quality") {
+private struct MetricTile: View {
+    let item: DetailItem
+    let theme: PixelWeatherTheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(item.label, systemImage: item.symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(theme.panelTextColor.opacity(0.72))
+            Text(verbatim: item.value)
+                .font(.headline.monospacedDigit())
+                .foregroundStyle(theme.panelTextColor)
+        }
+        .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+        .padding(10)
+        .background(theme.skyColor.opacity(0.22))
+        .overlay {
+            Rectangle()
+                .stroke(theme.accentColor.opacity(0.38), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.label): \(item.value)")
+    }
+}
+
+private struct AirQualitySection: View {
+    let air: AirQualitySummary
+    let theme: PixelWeatherTheme
+
+    var body: some View {
+        PixelPanel(theme: theme) {
             VStack(alignment: .leading, spacing: 10) {
+                PixelSectionTitle(title: "Air quality", symbol: "aqi.medium", theme: theme)
+
                 Label {
                     Text(verbatim: air.label)
                         .font(.headline)
@@ -56,106 +85,134 @@ struct WeatherDetailsView: View {
                         .fill(aqiColor(air.colorName))
                         .frame(width: 12, height: 12)
                 }
+                .foregroundStyle(theme.panelTextColor)
 
-                let pollutants: [(String, Double)] = [
-                    ("PM2.5", air.pm25), ("PM10", air.pm10), ("O\u{2083}", air.o3),
-                    ("NO\u{2082}", air.no2), ("SO\u{2082}", air.so2), ("CO", air.co),
-                ]
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(pollutants, id: \.0) { name, value in
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3),
+                    spacing: 8
+                ) {
+                    ForEach(pollutants, id: \.name) { pollutant in
                         VStack(spacing: 2) {
-                            Text(verbatim: name)
+                            Text(verbatim: pollutant.name)
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Text(verbatim: "\(Int(value.rounded()))")
-                                .font(.subheadline)
+                                .foregroundStyle(theme.panelTextColor.opacity(0.72))
+                            Text("\(Int(pollutant.value.rounded()))")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(theme.panelTextColor)
                         }
                         .frame(maxWidth: .infinity)
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel("\(name): \(Int(value.rounded())) micrograms per cubic meter")
+                        .accessibilityLabel("\(pollutant.name): \(Int(pollutant.value.rounded())) micrograms per cubic meter")
                     }
                 }
             }
         }
     }
 
-    private var hourlySection: some View {
-        sectionCard(title: "Next 24 hours") {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 16) {
-                    ForEach(details.hourly) { hour in
-                        VStack(spacing: 6) {
-                            Text(verbatim: hour.time)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Image(systemName: hour.symbol)
-                                .font(.title3)
-                            Text(verbatim: hour.temp)
-                                .font(.subheadline)
+    private var pollutants: [(name: String, value: Double)] {
+        [
+            ("PM2.5", air.pm25), ("PM10", air.pm10), ("O₃", air.o3),
+            ("NO₂", air.no2), ("SO₂", air.so2), ("CO", air.co),
+        ]
+    }
+
+    private func aqiColor(_ name: String) -> Color {
+        switch name {
+        case "green": .green
+        case "yellow": .yellow
+        case "orange": .orange
+        case "red": .red
+        case "purple": .purple
+        default: .gray
+        }
+    }
+}
+
+private struct HourlyForecastSection: View {
+    let hours: [HourlyForecast]
+    let theme: PixelWeatherTheme
+
+    var body: some View {
+        PixelPanel(theme: theme) {
+            VStack(alignment: .leading, spacing: 10) {
+                PixelSectionTitle(title: "Next 24 hours", symbol: "clock", theme: theme)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 10) {
+                        ForEach(hours) { hour in
+                            VStack(spacing: 7) {
+                                Text(verbatim: hour.time)
+                                    .font(.caption2)
+                                Image(systemName: hour.symbol)
+                                    .font(.title3)
+                                Text(verbatim: hour.temp)
+                                    .font(.subheadline.monospacedDigit())
+                            }
+                            .foregroundStyle(theme.panelTextColor)
+                            .frame(width: 72, height: 104)
+                            .background(theme.skyColor.opacity(0.22))
+                            .overlay {
+                                Rectangle()
+                                    .stroke(theme.accentColor.opacity(0.38), lineWidth: 1)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\(hour.time): \(hour.temp)")
                         }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("\(hour.time): \(hour.temp)")
                     }
                 }
-                .padding(.vertical, 4)
             }
         }
     }
+}
 
-    private var dailySection: some View {
-        sectionCard(title: "5-day forecast") {
-            VStack(spacing: 10) {
-                ForEach(details.daily) { day in
-                    HStack {
+private struct DailyForecastSection: View {
+    let days: [DailyForecast]
+    let theme: PixelWeatherTheme
+
+    var body: some View {
+        PixelPanel(theme: theme) {
+            VStack(alignment: .leading, spacing: 10) {
+                PixelSectionTitle(title: "5-day forecast", symbol: "calendar", theme: theme)
+
+                ForEach(days) { day in
+                    HStack(spacing: 10) {
                         Text(verbatim: day.day)
-                            .frame(width: 48, alignment: .leading)
+                            .frame(minWidth: 42, alignment: .leading)
                         Image(systemName: day.symbol)
                             .frame(width: 24)
                         if day.chanceOfRain > 0 {
-                            Label("\(day.chanceOfRain)%", systemImage: "drop")
+                            Label("\(day.chanceOfRain)%", systemImage: "drop.fill")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 56, alignment: .leading)
+                                .foregroundStyle(theme.accentColor)
                         } else {
-                            Spacer().frame(width: 56)
+                            Text("—")
+                                .foregroundStyle(theme.panelTextColor.opacity(0.55))
                         }
                         Spacer()
                         Text(verbatim: day.low)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.panelTextColor.opacity(0.68))
                         Text(verbatim: day.high)
-                            .fontWeight(.semibold)
+                            .fontWeight(.bold)
                     }
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(theme.panelTextColor)
+                    .padding(.vertical, 6)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(day.day): low \(day.low), high \(day.high), \(day.chanceOfRain)% chance of rain")
                 }
             }
         }
     }
+}
 
-    /// `WeatherDetails.swift` is plain logic with no SwiftUI import, so it hands back a word
-    /// ("green", "red", ...) rather than a `Color`; this is the one place that maps it to an
-    /// actual system color instead of relying on `Color(_:)`'s asset-catalog lookup, which would
-    /// silently fail since no such named color sets exist in Assets.xcassets.
-    private func aqiColor(_ name: String) -> Color {
-        switch name {
-        case "green": return .green
-        case "yellow": return .yellow
-        case "orange": return .orange
-        case "red": return .red
-        case "purple": return .purple
-        default: return .gray
-        }
-    }
+private struct PixelSectionTitle: View {
+    let title: String
+    let symbol: String
+    let theme: PixelWeatherTheme
 
-    private func sectionCard(title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-            content()
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+    var body: some View {
+        Label(title, systemImage: symbol)
+            .font(.headline.monospaced())
+            .foregroundStyle(theme.accentColor)
     }
 }

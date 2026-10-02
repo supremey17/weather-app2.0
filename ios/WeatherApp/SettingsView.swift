@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Port of SettingsWindow.java, shown as a sheet.
 struct SettingsView: View {
     let model: WeatherViewModel
     @Environment(\.dismiss) private var dismiss
@@ -12,25 +11,49 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Picker("Default unit", selection: $units) {
-                    ForEach(Units.allCases) { unit in
-                        Text(unit.label).tag(unit)
+            ZStack {
+                model.weatherTheme.skyColor
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        PixelPanel(theme: model.weatherTheme) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                SettingsSectionTitle(title: "Home checkpoint", symbol: "house")
+                                TextField("e.g. Rochester", text: $homeCity)
+                                    .textFieldStyle(.roundedBorder)
+                                    .accessibilityLabel("Home city")
+                            }
+                        }
+
+                        PixelPanel(theme: model.weatherTheme) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                SettingsSectionTitle(title: "Weather units", symbol: "thermometer")
+                                Picker("Default unit", selection: $units) {
+                                    ForEach(Units.allCases) { unit in
+                                        Text(unit.label).tag(unit)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                            }
+                        }
+
+                        PixelPanel(theme: model.weatherTheme) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                SettingsSectionTitle(title: "Dashboard options", symbol: "slider.horizontal.3")
+                                Toggle("Gear check", isOn: $adviceEnabled)
+                                Toggle("Avatar", isOn: $avatarEnabled)
+                            }
+                            .foregroundStyle(model.weatherTheme.panelTextColor)
+                        }
                     }
-                }
-                .pickerStyle(.inline)
-
-                Section("Home city") {
-                    TextField("e.g. Rochester", text: $homeCity)
-                }
-
-                Section {
-                    Toggle("Clothing Advisor", isOn: $adviceEnabled)
-                    Toggle("Avatar", isOn: $avatarEnabled)
+                    .padding()
                 }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(model.weatherTheme.skyColor, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -56,5 +79,16 @@ struct SettingsView: View {
                 avatarEnabled = model.avatarEnabled
             }
         }
+    }
+}
+
+private struct SettingsSectionTitle: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        Label(title, systemImage: symbol)
+            .font(.headline.monospaced())
+            .foregroundStyle(.white)
     }
 }

@@ -3,7 +3,7 @@ import Foundation
 import Observation
 import UIKit
 
-/// Holds the main screen's state and does what App.runSearch() did in the Java app.
+/// Holds the dashboard state and coordinates local persistence, location access, and weather loading.
 @MainActor
 @Observable
 final class WeatherViewModel {
@@ -16,9 +16,9 @@ final class WeatherViewModel {
     var savedCities: [String]
     var adviceEnabled: Bool
     var avatarEnabled: Bool
-    /// The user's own avatar photo, already pixelated. `nil` means fall back to the generic
-    /// silhouette (see `AvatarView`). Loaded once at launch; never fetched from the network.
     var avatarImage: UIImage?
+    var weatherTheme: PixelWeatherTheme = .neutral
+    var conditionTitle = "Weather briefing"
 
     private let prefs: Preferences
     private let advisor = ClothingAdvisor()
@@ -41,16 +41,19 @@ final class WeatherViewModel {
 
     var hasAvatarPhoto: Bool { avatarImage != nil }
 
-    /// Cuts out the background, pixelates, and saves the photo locally. Nothing here ever leaves
-    /// the device. Runs off the main actor since segmentation is real CPU work on top of the
-    /// pixelation that was already here.
     func setAvatarPhoto(_ image: UIImage) async {
         let processed = await Task.detached(priority: .userInitiated) {
             AvatarImageProcessing.makeAvatar(from: image)
         }.value
         avatarImage = processed
-        if let data = processed.pngData() {
-            try? avatarStore.save(data)
+        guard let data = processed.pngData() else {
+            resultText = "Your avatar could not be saved. Please try another photo."
+            return
+        }
+        do {
+            try avatarStore.save(data)
+        } catch {
+            resultText = "Your avatar could not be saved. Please try another photo."
         }
     }
 
@@ -59,10 +62,10 @@ final class WeatherViewModel {
         avatarStore.delete()
     }
 
-    /// Same startup order as the Java app: home city, else last searched city, else current location.
+    /// Starts from an explicitly chosen city. Location is requested only from the dashboard action.
     func start() async {
         guard service != nil else {
-            resultText = "OWM_API_KEY has not been set aka ts not working:/ (see ios/README.md)"
+            resultText = "Weather service setup is incomplete."
             return
         }
         if let home = prefs.homeCity, !home.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -70,7 +73,7 @@ final class WeatherViewModel {
         } else if let last = prefs.lastCity {
             cityInput = last
         } else {
-            await searchCurrentLocation()
+            resultText = "Choose a city or use your approximate location."
             return
         }
         await search()
@@ -89,9 +92,22 @@ final class WeatherViewModel {
         }
     }
 
+    /// Requests a single approximate location only after the person selects the dashboard action.
+    func useCurrentLocation() async {
+        guard let service else { return }
+        let coordinate: CLLocationCoordinate2D
+        do {
+            coordinate = try await locationService.currentLocation().coordinate
+        } catch {
+            resultText = "Location is unavailable. Search for a city instead."
+            return
+        }
+        await load(city: nil) {
+            try await service.findByCoordinates(lat: coordinate.latitude, lon: coordinate.longitude, units: self.units)
+        }
+    }
+
     func toggleUnits() async {
-        // Re-fetch rather than convert: OWM returns different numbers per unit, like the Java app.
-        // Skipped while loading, otherwise the label would flip without the numbers following.
         guard !isLoading else { return }
         units = units.toggled
         await search()
@@ -111,8 +127,6 @@ final class WeatherViewModel {
         savedCities = prefs.savedCities
     }
 
-    // MARK: Settings
-
     var homeCity: String { prefs.homeCity ?? "" }
     var defaultUnits: Units { prefs.defaultUnits }
 
@@ -127,32 +141,13 @@ final class WeatherViewModel {
         await search()
     }
 
-    // MARK: Private
-
-    private func searchCurrentLocation() async {
-        guard let service else { return }
-        let coordinate: CLLocationCoordinate2D
-        do {
-            coordinate = try await locationService.currentLocation().coordinate
-        } catch {
-            resultText = "Can't tell where you are. Type a city and hit Search."
-            return
-        }
-        await load(city: nil) {
-            try await service.findByCoordinates(lat: coordinate.latitude, lon: coordinate.longitude, units: self.units)
-        }
-    }
-
     private func load(city: String?, fetch: () async throws -> WeatherResponse) async {
-        // Ignore repeat taps while a request is running so button mashing can't queue extra calls.
         guard let service, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
 
         do {
             let weather = try await fetch()
-            // Each extra is independent: if one fails or is rate limited, the main weather still shows
-            // and that section is just left out (same fallback the Java app used for the wifi error).
             async let uviResult = service.uvIndex(lat: weather.coord.lat, lon: weather.coord.lon)
             async let airResult = service.airQuality(lat: weather.coord.lat, lon: weather.coord.lon)
             async let forecastResult = service.forecast(lat: weather.coord.lat, lon: weather.coord.lon, units: units)
@@ -162,11 +157,15 @@ final class WeatherViewModel {
 
             let condition = weather.weather.first?.main ?? ""
             let description = weather.weather.first?.description ?? ""
+            let tempF = units == .metric ? weather.main.temp * 9 / 5 + 32 : weather.main.temp
 
             resultText = "\(weather.name): \(weather.main.temp)\(units.symbol), \(description)"
-
-            // The advisor's thresholds are Fahrenheit, so convert when showing Celsius.
-            let tempF = units == .metric ? weather.main.temp * 9 / 5 + 32 : weather.main.temp
+            conditionTitle = description.isEmpty ? "Weather briefing" : description
+            weatherTheme = PixelWeatherTheme.make(
+                condition: condition,
+                epochSeconds: weather.dt,
+                timeZoneOffset: weather.timezone
+            )
             advice = advisor.advice(tempF: tempF, humidity: weather.main.humidity, condition: condition, uvi: uvi)
             details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, units: units)
 
@@ -174,19 +173,19 @@ final class WeatherViewModel {
             cityInput = searched
             prefs.lastCity = searched
         } catch WeatherError.cityNotFound(let name) {
-            resultText = "Yikes \"\(name)\". was speeled wrong. First day on earth? "
+            resultText = "We couldn't find \(name). Check the spelling and try again."
             advice = []
             details = nil
         } catch WeatherError.rateLimited {
-            resultText = "Slow down bestie! Try again in a minute."
+            resultText = "Weather requests are temporarily limited. Try again in a minute."
             advice = []
             details = nil
         } catch is CancellationError {
-            resultText = "Please try again i need to pay bills!"
+            resultText = "Weather loading was cancelled. Please try again."
             advice = []
             details = nil
         } catch {
-            resultText = "No wifi:("
+            resultText = "Weather is unavailable right now. Please try again."
             advice = []
             details = nil
         }

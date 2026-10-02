@@ -1,11 +1,7 @@
 import PhotosUI
 import SwiftUI
 
-/// Lets the user pick a photo of themselves to use as their avatar. `PhotosPicker` runs the
-/// system's own out-of-process photo UI, so this needs no photo-library permission string.
-///
-/// The pose check (arms at sides, facing the camera) is a suggestion only — see `PoseGuidance`.
-/// Nothing here ever leaves the phone: no network call, no analytics, no logging of the image.
+/// Imports and processes an avatar locally. The selected image is never uploaded.
 struct AvatarPhotoPickerView: View {
     let model: WeatherViewModel
     @Environment(\.dismiss) private var dismiss
@@ -18,49 +14,51 @@ struct AvatarPhotoPickerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                preview
+            ZStack {
+                model.weatherTheme.skyColor
+                    .ignoresSafeArea()
 
-                PhotosPicker("Choose Photo", selection: $pickerItem, matching: .images)
-                    .buttonStyle(.bordered)
+                ScrollView {
+                    VStack(spacing: 16) {
+                        PixelPanel(theme: model.weatherTheme) {
+                            VStack(spacing: 16) {
+                                preview
 
-                if isCheckingPose {
-                    ProgressView("Checking pose…")
-                } else if isSavingPhoto {
-                    ProgressView("Cutting out the background…")
-                } else if let poseSuggestion {
-                    Text(poseSuggestion)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
+                                PhotosPicker("Choose Photo", selection: $pickerItem, matching: .images)
+                                    .buttonStyle(PixelTextButtonStyle(theme: model.weatherTheme))
 
-                Spacer()
+                                statusMessage
+                            }
+                        }
 
-                if let previewImage {
-                    Button("Use This Photo") {
-                        Task {
-                            isSavingPhoto = true
-                            await model.setAvatarPhoto(previewImage)
-                            isSavingPhoto = false
-                            dismiss()
+                        if let previewImage {
+                            Button("Use This Photo") {
+                                Task {
+                                    isSavingPhoto = true
+                                    await model.setAvatarPhoto(previewImage)
+                                    isSavingPhoto = false
+                                    dismiss()
+                                }
+                            }
+                            .buttonStyle(PixelTextButtonStyle(theme: model.weatherTheme))
+                            .disabled(isSavingPhoto)
+                        }
+
+                        if model.hasAvatarPhoto {
+                            Button("Remove Photo", role: .destructive) {
+                                model.removeAvatarPhoto()
+                                dismiss()
+                            }
+                            .buttonStyle(.bordered)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isSavingPhoto)
-                }
-
-                if model.hasAvatarPhoto {
-                    Button("Remove Photo", role: .destructive) {
-                        model.removeAvatarPhoto()
-                        dismiss()
-                    }
+                    .padding()
                 }
             }
-            .padding()
             .navigationTitle("Avatar Photo")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(model.weatherTheme.skyColor, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -69,6 +67,27 @@ struct AvatarPhotoPickerView: View {
             .onChange(of: pickerItem) { _, newItem in
                 Task { await loadAndCheck(newItem) }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var statusMessage: some View {
+        if isCheckingPose {
+            ProgressView("Checking pose…")
+                .tint(model.weatherTheme.accentColor)
+        } else if isSavingPhoto {
+            ProgressView("Creating your local avatar…")
+                .tint(model.weatherTheme.accentColor)
+        } else if let poseSuggestion {
+            Text(poseSuggestion)
+                .font(.footnote)
+                .foregroundStyle(model.weatherTheme.panelTextColor.opacity(0.82))
+                .multilineTextAlignment(.center)
+        } else {
+            Text("Your photo stays on this device and is excluded from iCloud backup.")
+                .font(.footnote)
+                .foregroundStyle(model.weatherTheme.panelTextColor.opacity(0.82))
+                .multilineTextAlignment(.center)
         }
     }
 
@@ -84,9 +103,10 @@ struct AvatarPhotoPickerView: View {
             } else {
                 ContentUnavailableView(
                     "No Photo Selected",
-                    systemImage: "photo",
-                    description: Text("A photo of yourself, facing the camera with your arms at your sides, works best — but any photo is fine.")
+                    systemImage: "person.crop.rectangle",
+                    description: Text("A front-facing photo with your arms at your sides works best, but any photo is fine.")
                 )
+                .foregroundStyle(model.weatherTheme.panelTextColor)
             }
         }
     }
@@ -96,9 +116,9 @@ struct AvatarPhotoPickerView: View {
         guard let item else { return }
         guard let data = try? await item.loadTransferable(type: Data.self),
               let rawImage = UIImage(data: data) else { return }
-        // Normalized once here so the pose check reads real shoulder/wrist positions instead of
-        // a sideways buffer; `setAvatarPhoto` re-normalizes harmlessly as part of its own pipeline.
-        let image = AvatarImageProcessing.normalizingOrientation(rawImage)
+        let image = await Task.detached(priority: .userInitiated) {
+            AvatarImageProcessing.normalizingOrientation(rawImage)
+        }.value
         previewImage = image
 
         guard let cgImage = image.cgImage else { return }

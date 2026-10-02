@@ -7,6 +7,7 @@ import UIKit
 /// is what the avatar wears.
 struct AvatarView: View {
     let image: UIImage?
+    var size: CGSize = CGSize(width: 150, height: 220)
 
     var body: some View {
         Group {
@@ -21,7 +22,7 @@ struct AvatarView: View {
                     .interpolation(.none)
             }
         }
-        .frame(width: 150, height: 220)
+        .frame(width: size.width, height: size.height)
     }
 }
 

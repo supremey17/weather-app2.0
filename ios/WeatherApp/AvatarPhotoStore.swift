@@ -1,10 +1,6 @@
 import Foundation
 
-/// Saves the user's avatar photo to disk, the image equivalent of what `Preferences` does for
-/// small values. Deliberately separate from `UserDefaults`, which only holds strings/bools today.
-///
-/// This never touches the network: the photo stays on this device. The file is excluded from
-/// iCloud backup so a photo of the user's body isn't copied off-device as a side effect.
+/// Persists the processed avatar locally. The image is never uploaded and is excluded from backup.
 struct AvatarPhotoStore {
     private let fileURL: URL
 
@@ -28,10 +24,16 @@ struct AvatarPhotoStore {
 
     func save(_ data: Data) throws {
         try data.write(to: fileURL, options: .atomic)
+        // Complete protection is supported on device. Test containers and some development
+        // volumes do not support that attribute, so preserve the successful local save there.
+        try? FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.complete],
+            ofItemAtPath: fileURL.path
+        )
         var url = fileURL
         var resourceValues = URLResourceValues()
         resourceValues.isExcludedFromBackup = true
-        try? url.setResourceValues(resourceValues)
+        try url.setResourceValues(resourceValues)
     }
 
     func delete() {
