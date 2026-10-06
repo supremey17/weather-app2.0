@@ -58,7 +58,9 @@ enum PixelWeatherTheme: String, Equatable {
     }
 
     var panelColor: Color { .init(red: 0.05, green: 0.10, blue: 0.16) }
-    var panelTextColor: Color { .white }
+    /// Text color for a `.standard`-style panel. Kept for existing call sites; prefer
+    /// `textColor(on:)` for panel styles that can render with a light fill.
+    var panelTextColor: Color { textColor(on: .standard) }
     var accentColor: Color {
         switch self {
         case .clearDay: .init(red: 1.0, green: 0.78, blue: 0.20)
@@ -259,6 +261,101 @@ extension PixelWeatherTheme {
     }
 }
 
+// MARK: - Contrast-aware text colors
+
+/// Centralizes "what panel fill does this theme render with, and what text color reads on
+/// it" so panel contrast logic lives in one place instead of drifting between `PixelPanel`
+/// and call sites that pick their own hard-coded colors.
+extension PixelWeatherTheme {
+    /// Relative luminance (WCAG 2.1, 0...1 range) of a color given as 0...1 sRGB components.
+    /// Reference: https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
+    private static func luminance(red: Double, green: Double, blue: Double) -> Double {
+        func linearize(_ component: Double) -> Double {
+            let clamped = min(max(component, 0), 1)
+            return clamped <= 0.03928 ? clamped / 12.92 : pow((clamped + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linearize(red) + 0.7152 * linearize(green) + 0.0722 * linearize(blue)
+    }
+
+    /// Best-effort relative luminance of a `Color`.
+    ///
+    /// Every color this is called with in this file is authored as a plain
+    /// `.init(red:green:blue:)` literal, so resolving through `UIColor` is synchronous and has
+    /// no environment/trait dependency (no `EnvironmentValues`, no trait collection lookup).
+    /// If a color's RGB components can't be read for some reason, this falls back to `0`
+    /// ("treat as dark"), which preserves the original white-on-dark-navy behavior rather than
+    /// risking an unreadable light-on-light result.
+    private static func luminance(of color: Color) -> Double {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return 0
+        }
+        return luminance(red: Double(red), green: Double(green), blue: Double(blue))
+    }
+
+    /// WCAG 2.1 contrast ratio between two relative luminances, in 1...21.
+    private static func contrastRatio(_ luminanceA: Double, _ luminanceB: Double) -> Double {
+        let lighter = max(luminanceA, luminanceB)
+        let darker = min(luminanceA, luminanceB)
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    /// Fills at or above this luminance are light enough that white text is unreadable on them.
+    private static let lightFillLuminanceThreshold = 0.5
+
+    /// Minimum contrast ratio an accent color needs against a panel fill to be used as text.
+    private static let minimumAccentContrastRatio = 4.5
+
+    /// The fill color `PixelPanel` renders for a given style on this theme. `PixelPanel.fill`
+    /// delegates to this so the "what does style X look like on theme Y" decision can't drift
+    /// between the panel view and the text-contrast logic below.
+    func fill(for style: PixelPanelStyle) -> Color {
+        switch style {
+        case .standard: panelColor.opacity(0.94)
+        case .wood: palette.wood
+        case .showroom: palette.showroomPanel
+        case .hud: palette.hud
+        }
+    }
+
+    /// A readable text color for content drawn on the fill `PixelPanel` renders for `style`:
+    /// the theme's dark navy `panelColor` when that fill is light, otherwise white.
+    ///
+    /// `panelTextColor` is `textColor(on: .standard)`, kept as a separate property so existing
+    /// call sites that only ever draw on `.standard` panels keep working unchanged.
+    func textColor(on style: PixelPanelStyle) -> Color {
+        Self.luminance(of: fill(for: style)) >= Self.lightFillLuminanceThreshold ? panelColor : .white
+    }
+
+    /// A readable text color for an accent-colored heading drawn on the fill `PixelPanel`
+    /// renders for `style` (e.g. the "GARAGE · LOADOUT" title). Keeps `accentColor` itself when
+    /// it already has enough contrast against that fill, otherwise falls back to the same
+    /// dark-ink/white choice as `textColor(on:)`.
+    func accentText(on style: PixelPanelStyle) -> Color {
+        let fillLuminance = Self.luminance(of: fill(for: style))
+        let accentLuminance = Self.luminance(of: accentColor)
+        let ratio = Self.contrastRatio(fillLuminance, accentLuminance)
+        return ratio >= Self.minimumAccentContrastRatio ? accentColor : textColor(on: style)
+    }
+
+    /// Text color for content drawn directly over the sky gradient / parallax scene (the hero
+    /// scene and the navigation toolbar in `ContentView`), rather than over a panel fill.
+    /// Only `.clearDay` and `.snowy` skies are light enough to need dark ink; every other theme
+    /// keeps the original white.
+    var skyTextColor: Color {
+        switch self {
+        case .clearDay, .snowy: panelColor
+        default: .white
+        }
+    }
+
+    /// Sprite tint matching `skyTextColor`, for icons drawn directly over the sky.
+    var skyTint: Color { skyTextColor }
+}
+
 // MARK: - Fonts
 
 /// Bundled OFL pixel fonts (Press Start 2P for display/numbers, Silkscreen for everything
@@ -357,12 +454,7 @@ struct PixelPanel<Content: View>: View {
     }
 
     private var fill: Color {
-        switch style {
-        case .standard: theme.panelColor.opacity(0.94)
-        case .wood: theme.palette.wood
-        case .showroom: theme.palette.showroomPanel
-        case .hud: theme.palette.hud
-        }
+        theme.fill(for: style)
     }
 
     private var borderColor: Color {
@@ -416,7 +508,7 @@ struct PixelButtonStyle: ButtonStyle {
     private var foreground: Color {
         switch kind {
         case .primary, .icon: theme.panelColor
-        case .secondary: theme.panelTextColor
+        case .secondary: theme.textColor(on: .hud)
         }
     }
 
@@ -434,6 +526,24 @@ struct PixelButtonStyle: ButtonStyle {
             .clipShape(PixelBevelShape(notch: 3))
             .offset(x: isPressed ? 2 : 0, y: isPressed ? 2 : 0)
             .shadow(color: .black.opacity(isPressed ? 0 : 0.3), radius: 0, x: isPressed ? 0 : 2, y: isPressed ? 0 : 2)
+    }
+}
+
+/// Thin wrappers kept so call sites written against the original two-style API
+/// (icon buttons and text buttons) still compile unchanged.
+struct PixelIconButtonStyle: ButtonStyle {
+    let theme: PixelWeatherTheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        PixelButtonStyle(theme: theme, kind: .icon).makeBody(configuration: configuration)
+    }
+}
+
+struct PixelTextButtonStyle: ButtonStyle {
+    let theme: PixelWeatherTheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        PixelButtonStyle(theme: theme, kind: .primary).makeBody(configuration: configuration)
     }
 }
 

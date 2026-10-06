@@ -11,6 +11,7 @@ struct Preferences {
     private static let savedCitiesKey = "saved_cities"
     private static let adviceKey = "advice_enabled"
     private static let avatarKey = "avatar_enabled"
+    private static let accessoriesKey = "accessories_enabled"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -55,5 +56,12 @@ struct Preferences {
     var isAvatarEnabled: Bool {
         get { defaults.object(forKey: Self.avatarKey) as? Bool ?? true }
         nonmutating set { defaults.set(newValue, forKey: Self.avatarKey) }
+    }
+
+    /// Off by default: avatar accessories (hat/glasses/cigarette) are a scaffold with no settings
+    /// UI yet, so this flag exists for the pipeline to read without changing anyone's experience.
+    var isAccessoriesEnabled: Bool {
+        get { defaults.object(forKey: Self.accessoriesKey) as? Bool ?? false }
+        nonmutating set { defaults.set(newValue, forKey: Self.accessoriesKey) }
     }
 }

@@ -30,15 +30,23 @@ struct ContentView: View {
                             )
                         }
 
+                        if model.avatarEnabled || (model.adviceEnabled && !model.advice.isEmpty) {
+                            GarageCard(
+                                avatarEnabled: model.avatarEnabled,
+                                avatarImage: model.avatarImage,
+                                onAvatarTap: { showingAvatarPhoto = true },
+                                adviceEnabled: model.adviceEnabled,
+                                advice: model.advice,
+                                theme: model.weatherTheme
+                            )
+                        }
+
                         WeatherHero(
                             city: model.cityInput,
                             conditionTitle: model.conditionTitle,
                             resultText: model.resultText,
                             isLoading: model.isLoading,
                             theme: model.weatherTheme,
-                            avatarEnabled: model.avatarEnabled,
-                            avatarImage: model.avatarImage,
-                            onAvatarTap: { showingAvatarPhoto = true },
                             onUseLocation: useCurrentLocation
                         )
 
@@ -54,38 +62,40 @@ struct ContentView: View {
                                 .foregroundStyle(model.weatherTheme.panelTextColor)
                             }
                         }
-
-                        if model.adviceEnabled, !model.advice.isEmpty {
-                            GearAdviceSection(advice: model.advice, theme: model.weatherTheme)
-                        }
                     }
                     .padding()
                 }
             }
-            .navigationTitle("Weather Journey")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(model.weatherTheme.skyColor, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("WEATHER JOURNEY")
+                        .pixelFont(.title)
+                        .foregroundStyle(model.weatherTheme.skyTextColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
-                        model.saveCurrentCity()
+                        model.toggleCurrentCitySaved()
                     } label: {
-                        Image(systemName: model.savedCities.contains(model.cityInput) ? "star.fill" : "star")
+                        PixelSprite(model.isCurrentCitySaved ? .starFilled : .star, scale: 2, tint: model.weatherTheme.skyTint)
                     }
-                    .accessibilityLabel("Save current city")
+                    .accessibilityLabel(model.isCurrentCitySaved ? "Remove city from saved" : "Save current city")
 
                     Button {
                         showingCities = true
                     } label: {
-                        Image(systemName: "map")
+                        PixelSprite(.map, scale: 2, tint: model.weatherTheme.skyTint)
                     }
                     .accessibilityLabel("Saved cities")
 
                     Button {
                         showingSettings = true
                     } label: {
-                        Image(systemName: "gearshape")
+                        PixelSprite(.gear, scale: 2, tint: model.weatherTheme.skyTint)
                     }
                     .accessibilityLabel("Settings")
                 }
@@ -123,14 +133,13 @@ private struct CitySearchPanel: View {
     let isFocused: FocusState<Bool>.Binding
 
     var body: some View {
-        PixelPanel(theme: model.weatherTheme) {
+        PixelPanel(theme: model.weatherTheme, style: .hud) {
             HStack(spacing: 10) {
-                Image(systemName: "flag.checkered")
-                    .foregroundStyle(model.weatherTheme.accentColor)
+                PixelSprite(.flag, scale: 2, tint: model.weatherTheme.accentColor)
 
                 TextField("Change city", text: $model.cityInput)
                     .textFieldStyle(.plain)
-                    .foregroundStyle(model.weatherTheme.panelTextColor)
+                    .foregroundStyle(model.weatherTheme.textColor(on: .hud))
                     .submitLabel(.search)
                     .focused(isFocused)
                     .onSubmit {
@@ -151,7 +160,7 @@ private struct CitySearchPanel: View {
                     suggester.clear()
                     Task { await model.search() }
                 } label: {
-                    Image(systemName: "magnifyingglass")
+                    PixelSprite(.search, scale: 2)
                 }
                 .buttonStyle(PixelIconButtonStyle(theme: model.weatherTheme))
                 .accessibilityLabel("Search city")
@@ -206,61 +215,52 @@ private struct WeatherHero: View {
     let resultText: String
     let isLoading: Bool
     let theme: PixelWeatherTheme
-    let avatarEnabled: Bool
-    let avatarImage: UIImage?
-    let onAvatarTap: () -> Void
     let onUseLocation: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
-            PixelScene(theme: theme, animate: theme.supportsAmbientMotion && !reduceMotion)
+            PixelParallaxScene(theme: theme, animate: theme.supportsAmbientMotion && !reduceMotion)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text(city.isEmpty ? "NEW ROUTE" : city)
-                    .font(.headline.monospaced())
-                    .foregroundStyle(.white.opacity(0.86))
+                    .pixelFont(.display)
+                    .foregroundStyle(theme.skyTextColor.opacity(0.86))
 
                 HStack(alignment: .bottom, spacing: 16) {
-                    Image(systemName: theme.sceneSymbol)
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(theme.accentColor)
-                        .accessibilityHidden(true)
+                    PixelSprite(theme.spriteKind, scale: 4)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(conditionTitle)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.skyTextColor)
                         Text(resultText.isEmpty ? "Choose your next weather checkpoint." : resultText)
                             .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.88))
+                            .foregroundStyle(theme.skyTextColor.opacity(0.88))
                             .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    if avatarEnabled {
-                        Button {
-                            onAvatarTap()
-                        } label: {
-                            AvatarView(image: avatarImage, size: CGSize(width: 54, height: 76))
-                                .accessibilityHidden(true)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Change avatar photo")
                     }
                 }
 
                 if isLoading {
-                    Label("Updating route…", systemImage: "arrow.triangle.2.circlepath")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                    HStack(spacing: 8) {
+                        PixelSprite(.refresh, tint: theme.skyTint)
+                        Text("Updating route…")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(theme.skyTextColor)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Updating route…")
                 } else {
                     Button {
                         onUseLocation()
                     } label: {
-                        Label("Use my approximate location", systemImage: "location")
+                        HStack(spacing: 8) {
+                            PixelSprite(.location, tint: .white)
+                            Text("Use my approximate location")
+                        }
                     }
                     .buttonStyle(PixelTextButtonStyle(theme: theme))
+                    .accessibilityLabel("Use my approximate location")
                     .accessibilityHint("Requests your location once to find local weather.")
                 }
             }
@@ -276,118 +276,131 @@ private struct WeatherHero: View {
     }
 }
 
-private struct PixelScene: View {
-    let theme: PixelWeatherTheme
-    let animate: Bool
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var isOffset = false
-
-    private var shouldAnimate: Bool {
-        animate && scenePhase == .active
-    }
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .bottom) {
-                theme.skyColor
-                Rectangle()
-                    .fill(theme.horizonColor)
-                    .frame(height: proxy.size.height * 0.28)
-
-                if theme.supportsAmbientMotion {
-                    PixelAmbientWeather(theme: theme, offset: isOffset)
-                }
-            }
-        }
-        .onAppear {
-            updateAnimation()
-        }
-        .onChange(of: shouldAnimate) { _, _ in
-            updateAnimation()
-        }
-    }
-
-    private func updateAnimation() {
-        guard shouldAnimate else {
-            withAnimation(.none) {
-                isOffset = false
-            }
-            return
-        }
-        withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) {
-            isOffset = true
-        }
-    }
-}
-
-private struct PixelAmbientWeather: View {
-    let theme: PixelWeatherTheme
-    let offset: Bool
-
-    var body: some View {
-        GeometryReader { proxy in
-            ForEach(0..<12, id: \.self) { index in
-                Rectangle()
-                    .fill(theme == .snowy ? Color.white.opacity(0.84) : theme.accentColor.opacity(0.74))
-                    .frame(width: theme == .snowy ? 4 : 2, height: theme == .snowy ? 4 : 14)
-                    .position(
-                        x: CGFloat((index * 43) % max(Int(proxy.size.width), 1)),
-                        y: CGFloat((index * 31) % max(Int(proxy.size.height), 1)) + (offset ? proxy.size.height : 0)
-                    )
-            }
-        }
-        .clipped()
-        .accessibilityHidden(true)
-    }
-}
-
-private struct GearAdviceSection: View {
+/// Car Racer-style garage showroom card: the avatar stands on a small spotlit stage on
+/// one side, with the day's gear checklist racked up on the other. Only shown when there's
+/// something to display (an avatar, or non-empty gear advice).
+private struct GarageCard: View {
+    let avatarEnabled: Bool
+    let avatarImage: UIImage?
+    let onAvatarTap: () -> Void
+    let adviceEnabled: Bool
     let advice: [String]
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme) {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Gear check", systemImage: "backpack")
-                    .font(.headline.monospaced())
-                    .foregroundStyle(theme.accentColor)
+        PixelPanel(theme: theme, style: .showroom) {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("GARAGE · LOADOUT")
+                        .pixelFont(.title)
+                        .foregroundStyle(theme.accentText(on: .showroom))
+                    Rectangle()
+                        .fill(theme.palette.neon)
+                        .frame(height: 2)
+                }
 
-                ForEach(advice, id: \.self) { item in
-                    Label(item, systemImage: "checkmark.square.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(theme.panelTextColor)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                ViewThatFits {
+                    HStack(alignment: .top, spacing: 16) {
+                        if avatarEnabled {
+                            avatarStage
+                                .frame(maxWidth: adviceEnabled ? 150 : .infinity)
+                        }
+                        if adviceEnabled {
+                            gearCheck
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        if avatarEnabled {
+                            avatarStage
+                                .frame(maxWidth: .infinity)
+                        }
+                        if adviceEnabled {
+                            gearCheck
+                        }
+                    }
                 }
             }
         }
     }
-}
 
-struct PixelIconButtonStyle: ButtonStyle {
-    let theme: PixelWeatherTheme
+    private var avatarStage: some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: .bottom) {
+                HStack {
+                    Rectangle()
+                        .fill(theme.palette.neon.opacity(0.55))
+                        .frame(width: 3)
+                    Spacer()
+                    Rectangle()
+                        .fill(theme.palette.neon.opacity(0.55))
+                        .frame(width: 3)
+                }
+                .frame(height: 200)
+                .accessibilityHidden(true)
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(theme.panelColor)
-            .padding(9)
-            .background(theme.accentColor)
-            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-            .opacity(configuration.isPressed ? 0.68 : 1)
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(theme.palette.panelShade)
+                        .frame(width: 140, height: 10)
+                    Rectangle()
+                        .fill(theme.palette.hud)
+                        .frame(width: 100, height: 6)
+                }
+                .accessibilityHidden(true)
+
+                Button(action: onAvatarTap) {
+                    AvatarView(image: avatarImage, size: CGSize(width: 130, height: 190))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Change avatar photo")
+            }
+
+            Text("TAP TO SWAP")
+                .pixelFont(.caption)
+                .foregroundStyle(theme.textColor(on: .showroom).opacity(0.8))
+        }
     }
-}
 
-struct PixelTextButtonStyle: ButtonStyle {
-    let theme: PixelWeatherTheme
+    private var gearCheck: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                PixelSprite(.backpack, scale: 2, tint: theme.accentColor)
+                Text("GEAR CHECK")
+                    .pixelFont(.label)
+                    .foregroundStyle(theme.textColor(on: .showroom))
+            }
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(theme.panelColor)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(theme.accentColor)
-            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-            .opacity(configuration.isPressed ? 0.68 : 1)
+            if advice.isEmpty {
+                Text("No gear needed — enjoy the ride!")
+                    .pixelFont(.body)
+                    .foregroundStyle(theme.textColor(on: .showroom).opacity(0.85))
+            } else {
+                ForEach(advice, id: \.self) { item in
+                    HStack(spacing: 10) {
+                        PixelBevelShape(notch: 2)
+                            .fill(theme.palette.hud)
+                            .frame(width: 20, height: 20)
+                            .overlay {
+                                PixelSprite(.check, scale: 1, tint: theme.accentColor)
+                            }
+
+                        Text(item)
+                            .pixelFont(.body)
+                            .foregroundStyle(theme.textColor(on: .showroom))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                Text("READY")
+                    .pixelFont(.caption)
+                    .foregroundStyle(theme.textColor(on: .showroom).opacity(0.85))
+                PixelStatBar(value: Double(min(advice.count, 5)) / 5.0, segments: 5, theme: theme)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

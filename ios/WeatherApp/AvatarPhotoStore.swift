@@ -1,11 +1,14 @@
+import CoreGraphics
 import Foundation
 
 /// Persists the processed avatar locally. The image is never uploaded and is excluded from backup.
 struct AvatarPhotoStore {
     private let fileURL: URL
+    private let anchorsURL: URL
 
     init(directory: URL = AvatarPhotoStore.defaultDirectory()) {
         self.fileURL = directory.appendingPathComponent("avatar.png")
+        self.anchorsURL = directory.appendingPathComponent("avatar-face-anchors.json")
     }
 
     static func defaultDirectory() -> URL {
@@ -38,5 +41,24 @@ struct AvatarPhotoStore {
 
     func delete() {
         try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    /// Loads the face anchors saved alongside the avatar image, if any. `nil` covers "never
+    /// detected a face", "no file yet", and "corrupt JSON" alike — callers already treat a nil
+    /// `FaceAnchors` as "render no accessories", so there's no need to distinguish those cases.
+    func loadAnchors() -> FaceAnchors? {
+        guard let data = try? Data(contentsOf: anchorsURL) else { return nil }
+        return try? JSONDecoder().decode(FaceAnchors.self, from: data)
+    }
+
+    /// The anchors are tiny and derived (four points, no pixel data), so this skips the
+    /// backup-exclusion/protection-attribute dance `save` does for the actual photo.
+    func saveAnchors(_ anchors: FaceAnchors) throws {
+        let data = try JSONEncoder().encode(anchors)
+        try data.write(to: anchorsURL, options: .atomic)
+    }
+
+    func deleteAnchors() {
+        try? FileManager.default.removeItem(at: anchorsURL)
     }
 }

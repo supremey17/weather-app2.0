@@ -17,6 +17,9 @@ final class WeatherViewModel {
     var adviceEnabled: Bool
     var avatarEnabled: Bool
     var avatarImage: UIImage?
+    var avatarFaceAnchors: FaceAnchors?
+    /// Off by default (see `Preferences.isAccessoriesEnabled`) — no settings UI toggles this yet.
+    var accessoriesEnabled: Bool
     var weatherTheme: PixelWeatherTheme = .neutral
     var conditionTitle = "Weather briefing"
 
@@ -33,19 +36,28 @@ final class WeatherViewModel {
         savedCities = prefs.savedCities
         adviceEnabled = prefs.isAdviceEnabled
         avatarEnabled = prefs.isAvatarEnabled
+        accessoriesEnabled = prefs.isAccessoriesEnabled
         service = try? WeatherService()
         if let data = avatarStore.load() {
             avatarImage = UIImage(data: data)
         }
+        avatarFaceAnchors = avatarStore.loadAnchors()
     }
 
     var hasAvatarPhoto: Bool { avatarImage != nil }
 
     func setAvatarPhoto(_ image: UIImage) async {
-        let processed = await Task.detached(priority: .userInitiated) {
-            AvatarImageProcessing.makeAvatar(from: image)
+        let (processed, anchors) = await Task.detached(priority: .userInitiated) { () -> (UIImage, FaceAnchors?) in
+            // Face-landmark detection runs on the downscaled, pre-pixelation buffer alongside the
+            // existing pixelation work: landmark detection is unreliable on blocky/pixelated
+            // input, so it must happen before `pixelate`, not after.
+            let downscaled = AvatarImageProcessing.downscale(image)
+            let anchors = downscaled.cgImage.flatMap(FaceAnchorDetector.detect(in:))
+            let avatar = AvatarImageProcessing.makeAvatar(from: image)
+            return (avatar, anchors)
         }.value
         avatarImage = processed
+        avatarFaceAnchors = anchors
         guard let data = processed.pngData() else {
             resultText = "Your avatar could not be saved. Please try another photo."
             return
@@ -54,12 +66,20 @@ final class WeatherViewModel {
             try avatarStore.save(data)
         } catch {
             resultText = "Your avatar could not be saved. Please try another photo."
+            return
+        }
+        if let anchors {
+            try? avatarStore.saveAnchors(anchors)
+        } else {
+            avatarStore.deleteAnchors()
         }
     }
 
     func removeAvatarPhoto() {
         avatarImage = nil
+        avatarFaceAnchors = nil
         avatarStore.delete()
+        avatarStore.deleteAnchors()
     }
 
     /// Starts from an explicitly chosen city. Location is requested only from the dashboard action.
@@ -113,10 +133,20 @@ final class WeatherViewModel {
         await search()
     }
 
-    func saveCurrentCity() {
+    /// Whether the trimmed `cityInput` is currently in the saved cities list.
+    var isCurrentCitySaved: Bool {
+        savedCities.contains(cityInput.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// Saves the current city if it isn't saved yet, or removes it if it already is.
+    func toggleCurrentCitySaved() {
         let city = cityInput.trimmingCharacters(in: .whitespaces)
         guard !city.isEmpty else { return }
-        prefs.addSavedCity(city)
+        if savedCities.contains(city) {
+            prefs.removeSavedCity(city)
+        } else {
+            prefs.addSavedCity(city)
+        }
         savedCities = prefs.savedCities
     }
 
