@@ -10,7 +10,7 @@ struct PixelSearchBar: View {
     let isFocused: FocusState<Bool>.Binding
 
     var body: some View {
-        PixelPanel(theme: model.weatherTheme, style: .hud) {
+        PixelPanel(theme: model.weatherTheme, style: .hud, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("▶ DESTINATION")
                     .pixelFont(.label)

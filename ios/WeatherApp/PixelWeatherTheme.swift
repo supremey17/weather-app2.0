@@ -542,17 +542,24 @@ struct PixelPanel<Content: View>: View {
     let theme: PixelWeatherTheme
     var style: PixelPanelStyle = .standard
     var padding: CGFloat = 14
+    /// Opts this panel into the frosted-glass treatment (blurred material backing behind a
+    /// mostly-opaque fill) instead of the plain opaque fill. Defaults to `false` so every
+    /// existing call site renders exactly as before; only panels layered over the animated
+    /// backgrounds/particles (weather details, the search bar, the garage card) opt in.
+    var isTranslucent: Bool = false
     let content: Content
 
     init(
         theme: PixelWeatherTheme,
         style: PixelPanelStyle = .standard,
         padding: CGFloat = 14,
+        isTranslucent: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
         self.theme = theme
         self.style = style
         self.padding = padding
+        self.isTranslucent = isTranslucent
         self.content = content()
     }
 
@@ -572,7 +579,21 @@ struct PixelPanel<Content: View>: View {
     var body: some View {
         content
             .padding(padding)
-            .background(fill)
+            .background {
+                if isTranslucent {
+                    // Frosted glass: a blurred material backing shows the scene/particles
+                    // behind through the ~15% the fill doesn't cover, while the fill itself
+                    // stays dominant enough that `theme.textColor(on:)`/`accentText(on:)` —
+                    // computed against the fully-opaque `fill`, and contrast-tested as such —
+                    // still read correctly in practice.
+                    ZStack {
+                        Rectangle().fill(.ultraThinMaterial)
+                        fill.opacity(0.85)
+                    }
+                } else {
+                    fill
+                }
+            }
             .overlay {
                 PixelBevelShape()
                     .inset(by: 2.5)

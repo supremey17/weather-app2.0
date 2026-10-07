@@ -269,7 +269,7 @@ private struct GarageCard: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme, style: .showroom) {
+        PixelPanel(theme: theme, style: .showroom, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("GARAGE · LOADOUT")

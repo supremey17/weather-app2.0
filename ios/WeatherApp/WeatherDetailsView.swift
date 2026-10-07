@@ -26,7 +26,7 @@ private struct CurrentMetricsSection: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme) {
+        PixelPanel(theme: theme, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 12) {
                 PixelSectionTitle(title: "Right now", symbol: "gauge.with.dots.needle.67percent", theme: theme)
 
@@ -48,7 +48,7 @@ private struct MetricTile: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme, style: .hud, padding: 10) {
+        PixelPanel(theme: theme, style: .hud, padding: 10, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     PixelSprite(PixelSpriteKind(sfSymbol: item.symbol), scale: 2, tint: theme.accentColor)
@@ -72,7 +72,7 @@ private struct AirQualitySection: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme) {
+        PixelPanel(theme: theme, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 10) {
                 PixelSectionTitle(title: "Air quality", symbol: "aqi.medium", theme: theme)
 
@@ -156,7 +156,7 @@ private struct HourlyForecastSection: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme) {
+        PixelPanel(theme: theme, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 10) {
                 PixelSectionTitle(title: "Next 24 hours", symbol: "clock", theme: theme)
 
@@ -175,7 +175,7 @@ private struct HourlyForecastSection: View {
                             .background(theme.skyColor.opacity(0.22))
                             .overlay {
                                 Rectangle()
-                                    .stroke(theme.accentColor.opacity(0.38), lineWidth: 1)
+                                    .stroke(theme.accentColor.opacity(0.50), lineWidth: 1)
                             }
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("\(hour.time): \(hour.temp)")
@@ -192,7 +192,7 @@ private struct DailyForecastSection: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme) {
+        PixelPanel(theme: theme, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 10) {
                 PixelSectionTitle(title: "5-day forecast", symbol: "calendar", theme: theme)
 
@@ -237,7 +237,7 @@ private struct PixelSectionTitle: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme, style: .hud, padding: 6) {
+        PixelPanel(theme: theme, style: .hud, padding: 6, isTranslucent: true) {
             HStack(spacing: 6) {
                 PixelSprite(PixelSpriteKind(sfSymbol: symbol), scale: 2, tint: theme.accentColor)
                 Text(title)

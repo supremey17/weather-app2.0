@@ -212,6 +212,42 @@ struct PixelWeatherThemeContrastTests {
     }
 }
 
+// MARK: - PixelPanel translucency (frosted-glass opt-in)
+
+/// `isTranslucent` only swaps which `background` modifier `PixelPanel` builds — a pure SwiftUI
+/// composition detail with no value-level output to assert on directly (a `View`'s body isn't
+/// equatable/inspectable from here without a UI-hosting harness, which these tests don't use
+/// elsewhere either). The two things that *are* verifiable from the API surface:
+///   1. `isTranslucent` defaults to `false`, so the dozens of existing `PixelPanel(...)` call
+///      sites that don't pass it keep compiling and keep their original opaque look. Every
+///      pre-existing call site across the app (`SettingsView`, `SavedCitiesView`,
+///      `AvatarPhotoPickerView`, `PixelSuggestionMenu`, the "Ready to explore" panel, plus every
+///      other test in this file that constructs a `PixelPanel`-adjacent theme call) already
+///      proves this by continuing to compile unchanged.
+///   2. `fill(for:)`/`textColor(on:)`/`accentText(on:)` — the color math the frosted treatment
+///      is layered on top of without altering — are untouched, which `PixelWeatherThemeContrastTests`
+///      above continues to cover unmodified.
+/// So this struct only pins down the default-value contract at compile time; the visual result
+/// (blurred material behind an 0.85-opacity fill) is verified by build/manual inspection per the
+/// task instructions, not by a contrived unit test.
+struct PixelPanelTranslucencyTests {
+    @Test func omittingIsTranslucentCompilesAndDefaultsToOpaque() {
+        // If this compiles, `isTranslucent` has a default and every call site that omits it
+        // (the overwhelming majority of `PixelPanel(...)` usages in the app) is unaffected.
+        let panel = PixelPanel(theme: .clearDay, style: .standard) {
+            Text(verbatim: "")
+        }
+        #expect(panel.isTranslucent == false)
+    }
+
+    @Test func explicitIsTranslucentTrueIsStoredAsPassed() {
+        let panel = PixelPanel(theme: .clearDay, style: .hud, isTranslucent: true) {
+            Text(verbatim: "")
+        }
+        #expect(panel.isTranslucent == true)
+    }
+}
+
 // MARK: - Night modifier
 
 struct PixelWeatherThemeNightModifierTests {

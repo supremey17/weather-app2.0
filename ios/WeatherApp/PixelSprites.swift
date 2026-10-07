@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Every icon concept the app needs, standing in for the SF Symbols that used to be here.
 /// Each case maps to one hand-drawn 16x16 bitmap in `PixelSpriteKind.grid` below.
@@ -96,6 +97,61 @@ enum PixelSpriteKind: String, CaseIterable {
         case "slider.horizontal.3": self = .sliders
         case "arrow.triangle.2.circlepath": self = .refresh
         default: self = .cloud
+        }
+    }
+}
+
+extension PixelSpriteKind {
+    /// The `Assets.xcassets` imageset this icon's custom artwork lives in, named `icon-<kebab-case>`
+    /// (e.g. `icon-cloud-sun`) — scaffolded as empty slots for now. `PixelSprite` prefers this asset
+    /// when one exists and falls back to the hand-drawn `grid` below when it's empty, same
+    /// named-asset-first pattern as `AvatarView`/`PixelBackgroundLayer`.
+    ///
+    /// `nil` for the avatar-accessory placeholder cases: those already have their own override path
+    /// through `AvatarAccessory.assetName` (checked by `AvatarView`, not here), so a second,
+    /// competing slot on the sprite itself would be redundant and confusing.
+    var customAssetName: String? {
+        switch self {
+        case .sun: "icon-sun"
+        case .moon: "icon-moon"
+        case .cloud: "icon-cloud"
+        case .cloudSun: "icon-cloud-sun"
+        case .cloudMoon: "icon-cloud-moon"
+        case .rain: "icon-rain"
+        case .snow: "icon-snow"
+        case .storm: "icon-storm"
+        case .fog: "icon-fog"
+        case .search: "icon-search"
+        case .star: "icon-star"
+        case .starFilled: "icon-star-filled"
+        case .map: "icon-map"
+        case .gear: "icon-gear"
+        case .location: "icon-location"
+        case .backpack: "icon-backpack"
+        case .check: "icon-check"
+        case .flag: "icon-flag"
+        case .trash: "icon-trash"
+        case .close: "icon-close"
+        case .drop: "icon-drop"
+        case .wind: "icon-wind"
+        case .thermometer: "icon-thermometer"
+        case .thermometerVariable: "icon-thermometer-variable"
+        case .tempRange: "icon-temp-range"
+        case .humidity: "icon-humidity"
+        case .gauge: "icon-gauge"
+        case .gaugeAQI: "icon-gauge-aqi"
+        case .eye: "icon-eye"
+        case .sunrise: "icon-sunrise"
+        case .sunset: "icon-sunset"
+        case .clock: "icon-clock"
+        case .calendar: "icon-calendar"
+        case .house: "icon-house"
+        case .sliders: "icon-sliders"
+        case .refresh: "icon-refresh"
+        case .accessoryHatPlaceholder, .accessoryCapPlaceholder, .accessoryBeaniePlaceholder,
+             .accessoryGlassesPlaceholder, .accessoryShadesPlaceholder, .accessoryMonoclePlaceholder,
+             .accessoryCigarettePlaceholder, .accessoryPipePlaceholder, .accessoryLollipopPlaceholder:
+            nil
         }
     }
 }
@@ -996,17 +1052,29 @@ struct PixelSprite: View {
         let rows = grid.count
         let cols = grid.first?.count ?? 0
         let unit = scale * baseUnit
+        let size = CGSize(width: CGFloat(cols) * unit, height: CGFloat(rows) * unit)
 
-        Canvas { context, _ in
-            for (r, row) in grid.enumerated() {
-                for (c, char) in row.enumerated() {
-                    guard let color = kind.color(for: char, tint: tint) else { continue }
-                    let rect = CGRect(x: CGFloat(c) * unit, y: CGFloat(r) * unit, width: unit, height: unit)
-                    context.fill(Path(rect), with: .color(color))
+        Group {
+            if let assetName = kind.customAssetName, let uiImage = UIImage(named: assetName) {
+                // A custom icon exists for this kind — use it as-is (nearest-neighbor, so it
+                // stays crisp like the rest of the pixel art) instead of the hand-drawn grid.
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFit()
+            } else {
+                Canvas { context, _ in
+                    for (r, row) in grid.enumerated() {
+                        for (c, char) in row.enumerated() {
+                            guard let color = kind.color(for: char, tint: tint) else { continue }
+                            let rect = CGRect(x: CGFloat(c) * unit, y: CGFloat(r) * unit, width: unit, height: unit)
+                            context.fill(Path(rect), with: .color(color))
+                        }
+                    }
                 }
             }
         }
-        .frame(width: CGFloat(cols) * unit, height: CGFloat(rows) * unit)
+        .frame(width: size.width, height: size.height)
         .accessibilityHidden(true)
     }
 }
