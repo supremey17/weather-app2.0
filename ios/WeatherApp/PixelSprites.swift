@@ -25,6 +25,7 @@ enum PixelSpriteKind: String, CaseIterable {
     case check
     case flag
     case trash
+    case close
     case drop
     case wind
     case thermometer
@@ -46,8 +47,14 @@ enum PixelSpriteKind: String, CaseIterable {
     // pixel-art PNGs that don't exist yet; each is deliberately simple and shape-based so it
     // reads as an obvious placeholder rather than finished art.
     case accessoryHatPlaceholder
+    case accessoryCapPlaceholder
+    case accessoryBeaniePlaceholder
     case accessoryGlassesPlaceholder
+    case accessoryShadesPlaceholder
+    case accessoryMonoclePlaceholder
     case accessoryCigarettePlaceholder
+    case accessoryPipePlaceholder
+    case accessoryLollipopPlaceholder
 
     /// Maps the SF Symbol names previously used across the app onto the closest original sprite,
     /// so call sites that stored a symbol string (e.g. `DetailItem.symbol`) keep working.
@@ -460,6 +467,25 @@ extension PixelSpriteKind {
                 "................",
                 "................",
             ]
+        case .close:
+            return [
+                "................",
+                "................",
+                "KK............KK",
+                ".KK..........KK.",
+                "..KK........KK..",
+                "...KK......KK...",
+                "....KK....KK....",
+                "......KKKK......",
+                "......KKKK......",
+                "....KK....KK....",
+                "...KK......KK...",
+                "..KK........KK..",
+                ".KK..........KK.",
+                "KK............KK",
+                "................",
+                "................",
+            ]
         case .drop:
             return [
                 "................",
@@ -783,6 +809,44 @@ extension PixelSpriteKind {
                 "................",
                 "................",
             ]
+        case .accessoryCapPlaceholder:
+            return [
+                "................",
+                "....AAAAAAA.....",
+                "...AAAAAAAAA....",
+                "..AAAAAAAAAAA...",
+                "..KAAAAAAAAAK...",
+                "..KAAAAAAAAAK...",
+                "..KKKKKKKKKKKAAA",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+            ]
+        case .accessoryBeaniePlaceholder:
+            return [
+                "................",
+                "................",
+                "....AAAAAAA.....",
+                "...AAAAAAAAA....",
+                "..AAAAAAAAAAA...",
+                "..AAAAAAAAAAA...",
+                "..AAAAAAAAAAA...",
+                "..KKKKKKKKKKK...",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+            ]
         case .accessoryGlassesPlaceholder:
             return [
                 "................",
@@ -802,6 +866,44 @@ extension PixelSpriteKind {
                 "................",
                 "................",
             ]
+        case .accessoryShadesPlaceholder:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "..KKKKKK.KKKKK..",
+                ".KKKKKKKKKKKKKK.",
+                ".KKKKKKKKKKKKKK.",
+                ".KKKKKKKKKKKKKK.",
+                "..KKKKKK.KKKKK..",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+            ]
+        case .accessoryMonoclePlaceholder:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "......KKKKK.....",
+                ".....K.....K....",
+                ".....K.AAA.K....",
+                ".....K.AAA.K....",
+                ".....K.....K....",
+                "......KKKKK.....",
+                "..........K.....",
+                ".........K......",
+                "........K.......",
+                "................",
+            ]
         case .accessoryCigarettePlaceholder:
             return [
                 "................",
@@ -818,6 +920,44 @@ extension PixelSpriteKind {
                 "................",
                 "................",
                 "................",
+                "................",
+                "................",
+            ]
+        case .accessoryPipePlaceholder:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "..KKKKKKKKKKKK..",
+                "............KK..",
+                "...........KAAK.",
+                "...........KAAK.",
+                "...........KKKK.",
+                "................",
+                "................",
+                "................",
+            ]
+        case .accessoryLollipopPlaceholder:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                ".......KKK......",
+                "......KAAAK.....",
+                ".......AKA......",
+                "......KAAAK.....",
+                ".......KKK......",
+                "........K.......",
+                "........K.......",
+                "........K.......",
                 "................",
                 "................",
             ]

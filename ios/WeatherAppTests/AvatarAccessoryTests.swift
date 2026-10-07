@@ -17,10 +17,68 @@ struct AvatarAccessoryTests {
         #expect(Set(ids).count == ids.count)
     }
 
-    @Test func catalogHasExactlyOneItemPerSlot() {
+    @Test func catalogHasExactlyThreeItemsPerSlot() {
         let slots = AvatarAccessory.catalog.map(\.slot)
         #expect(Set(slots) == Set(AccessorySlot.allCases))
-        #expect(slots.count == AccessorySlot.allCases.count)
+        for slot in AccessorySlot.allCases {
+            #expect(slots.filter { $0 == slot }.count == 3)
+        }
+    }
+
+    // MARK: - AvatarAccessory.options(for:) / accessory(id:)
+
+    @Test func optionsReturnsExactlyThreeItemsPerSlotMatchingThatSlot() {
+        for slot in AccessorySlot.allCases {
+            let options = AvatarAccessory.options(for: slot)
+            #expect(options.count == 3)
+            #expect(options.allSatisfy { $0.slot == slot })
+        }
+    }
+
+    @Test func optionsPreservesCatalogOrder() {
+        for slot in AccessorySlot.allCases {
+            let expected = AvatarAccessory.catalog.filter { $0.slot == slot }
+            #expect(AvatarAccessory.options(for: slot).map(\.id) == expected.map(\.id))
+        }
+    }
+
+    @Test func accessoryFindsKnownIDAndReturnsNilForUnknownID() {
+        #expect(AvatarAccessory.accessory(id: "partyhat")?.slot == .head)
+        #expect(AvatarAccessory.accessory(id: "shades")?.slot == .eyes)
+        #expect(AvatarAccessory.accessory(id: "not-a-real-id") == nil)
+    }
+
+    // MARK: - AvatarAccessory.cycledAccessoryID
+
+    @Test func cyclingForwardFromNilVisitsAllThreeOptionsThenReturnsToNil() {
+        let slot = AccessorySlot.head
+        let options = AvatarAccessory.options(for: slot).map(\.id)
+
+        var current: String? = nil
+        var visited: [String?] = []
+        for _ in 0..<4 {
+            current = AvatarAccessory.cycledAccessoryID(currentID: current, slot: slot, forward: true)
+            visited.append(current)
+        }
+
+        #expect(visited == [options[0], options[1], options[2], nil])
+    }
+
+    @Test func cyclingBackwardFromNilGoesToTheLastOption() {
+        let slot = AccessorySlot.eyes
+        let options = AvatarAccessory.options(for: slot).map(\.id)
+
+        let previous = AvatarAccessory.cycledAccessoryID(currentID: nil, slot: slot, forward: false)
+        #expect(previous == options.last)
+    }
+
+    @Test func cyclingBackwardFullCircleReturnsToNil() {
+        let slot = AccessorySlot.mouth
+        var current: String? = nil
+        for _ in 0..<4 {
+            current = AvatarAccessory.cycledAccessoryID(currentID: current, slot: slot, forward: false)
+        }
+        #expect(current == nil)
     }
 
     // MARK: - AvatarAccessoryGeometry.aspectFitRect / point
@@ -111,5 +169,113 @@ struct AvatarAccessoryTests {
 
         prefs.isAccessoriesEnabled = false
         #expect(prefs.isAccessoriesEnabled == false)
+    }
+
+    // MARK: - Preferences.selectedAccessoryIDs
+
+    /// Matches the literal UserDefaults key `Preferences` stores `selectedAccessoryIDs` under, so
+    /// this test can poke bogus raw values directly into the same suite without `Preferences`
+    /// exposing that key as public API.
+    private static let selectedAccessoryIDsKey = "selected_accessory_ids"
+
+    @Test func selectedAccessoryIDsRoundTripsAFullValidSelection() throws {
+        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
+        let prefs = Preferences(defaults: defaults)
+
+        let selection: [AccessorySlot: String] = [
+            .head: "beanie",
+            .eyes: "monocle",
+            .mouth: "pipe",
+        ]
+        prefs.selectedAccessoryIDs = selection
+        #expect(prefs.selectedAccessoryIDs == selection)
+    }
+
+    @Test func selectedAccessoryIDsDropsAnEntryWithAnInvalidSlotKey() throws {
+        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
+        let prefs = Preferences(defaults: defaults)
+
+        defaults.set(
+            ["not-a-real-slot": "partyhat", "head": "partyhat"],
+            forKey: Self.selectedAccessoryIDsKey
+        )
+
+        #expect(prefs.selectedAccessoryIDs == [.head: "partyhat"])
+    }
+
+    @Test func selectedAccessoryIDsDropsAnEntryWhoseIDBelongsToADifferentSlot() throws {
+        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
+        let prefs = Preferences(defaults: defaults)
+
+        // "roundglasses" is a real catalog id, but it belongs to .eyes, not .head — this must be
+        // dropped rather than trusted, since a corrupted or stale-after-a-catalog-change value
+        // should never crash or silently mis-slot an accessory.
+        defaults.set(
+            ["head": "roundglasses", "eyes": "shades"],
+            forKey: Self.selectedAccessoryIDsKey
+        )
+
+        #expect(prefs.selectedAccessoryIDs == [.eyes: "shades"])
+    }
+
+    @Test func selectedAccessoryIDsNeverCrashesOnCompletelyBogusStoredData() throws {
+        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
+        let prefs = Preferences(defaults: defaults)
+
+        defaults.set(
+            ["head": "nonexistent-id", "bogus-slot": "cap", "mouth": "cigarette"],
+            forKey: Self.selectedAccessoryIDsKey
+        )
+
+        #expect(prefs.selectedAccessoryIDs == [.mouth: "cigarette"])
+    }
+}
+
+// MARK: - WeatherViewModel.activeAccessories
+
+@MainActor
+struct WeatherViewModelActiveAccessoriesTests {
+    /// Each test gets its own throwaway UserDefaults suite and avatar photo directory so tests
+    /// can't interfere with each other or touch real storage. Mirrors
+    /// `WeatherViewModelSavedCityTests.makeModel()`.
+    private func makeModel(prefs: Preferences) -> WeatherViewModel {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let avatarStore = AvatarPhotoStore(directory: dir)
+        return WeatherViewModel(prefs: prefs, avatarStore: avatarStore)
+    }
+
+    @Test func activeAccessoriesIsEmptyWhenAccessoriesDisabled() throws {
+        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
+        let prefs = Preferences(defaults: defaults)
+        prefs.isAvatarEnabled = true
+        prefs.isAccessoriesEnabled = false
+        prefs.selectedAccessoryIDs = [.head: "cap", .eyes: "shades", .mouth: "pipe"]
+
+        let model = makeModel(prefs: prefs)
+        #expect(model.activeAccessories.isEmpty)
+    }
+
+    @Test func activeAccessoriesIsEmptyWhenAvatarDisabledEvenIfAccessoriesEnabled() throws {
+        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
+        let prefs = Preferences(defaults: defaults)
+        prefs.isAvatarEnabled = false
+        prefs.isAccessoriesEnabled = true
+        prefs.selectedAccessoryIDs = [.head: "cap"]
+
+        let model = makeModel(prefs: prefs)
+        #expect(model.activeAccessories.isEmpty)
+    }
+
+    @Test func activeAccessoriesResolvesValidSelectionsWhenEnabled() throws {
+        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
+        let prefs = Preferences(defaults: defaults)
+        prefs.isAvatarEnabled = true
+        prefs.isAccessoriesEnabled = true
+        prefs.selectedAccessoryIDs = [.head: "cap", .mouth: "pipe"]
+
+        let model = makeModel(prefs: prefs)
+        let resolvedIDs = model.activeAccessories.map(\.id)
+        #expect(resolvedIDs == ["cap", "pipe"])
     }
 }

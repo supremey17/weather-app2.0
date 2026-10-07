@@ -91,7 +91,7 @@ enum PixelWeatherTheme: String, Equatable {
         self == .rainy || self == .stormy || self == .snowy || self == .cloudy
     }
 
-    private static func isNight(epochSeconds: Int?, timeZoneOffset: Int?) -> Bool {
+    static func isNight(epochSeconds: Int?, timeZoneOffset: Int?) -> Bool {
         guard let epochSeconds else { return false }
         let date = Date(timeIntervalSince1970: TimeInterval(epochSeconds))
         var calendar = Calendar(identifier: .gregorian)
@@ -354,6 +354,109 @@ extension PixelWeatherTheme {
 
     /// Sprite tint matching `skyTextColor`, for icons drawn directly over the sky.
     var skyTint: Color { skyTextColor }
+
+    /// Whether this theme's look is currently identical regardless of time of day, and therefore
+    /// benefits from the additive night darkening below. `.clearDay`/`.clearNight` already have
+    /// their own distinct day/night palettes, so they're excluded.
+    var appliesNightModifier: Bool {
+        switch self {
+        case .clearDay, .clearNight: false
+        case .cloudy, .rainy, .stormy, .snowy, .misty, .neutral: true
+        }
+    }
+
+    /// `palette`, darkened for night via `PixelPalette.nightAdjusted()` when this theme doesn't
+    /// already have a distinct night look.
+    func scenePalette(isNight: Bool) -> PixelPalette {
+        isNight && appliesNightModifier ? palette.nightAdjusted() : palette
+    }
+
+    /// `skyColor`, darkened for night when this theme doesn't already have a distinct night look.
+    func skyColor(isNight: Bool) -> Color {
+        isNight && appliesNightModifier ? skyColor.pixelNightShaded() : skyColor
+    }
+
+    /// `skyTextColor`, re-derived against the night-darkened sky when this theme doesn't already
+    /// have a distinct night look; identical to `skyTextColor` otherwise, so the day path has
+    /// zero regression.
+    func skyTextColor(isNight: Bool) -> Color {
+        guard isNight && appliesNightModifier else { return skyTextColor }
+        let nightSkyLuminance = Self.luminance(of: skyColor(isNight: true))
+        let whiteRatio = Self.contrastRatio(nightSkyLuminance, Self.luminance(of: .white))
+        let panelRatio = Self.contrastRatio(nightSkyLuminance, Self.luminance(of: panelColor))
+        return whiteRatio >= panelRatio ? .white : panelColor
+    }
+
+    /// Sprite tint matching `skyTextColor(isNight:)`.
+    func skyTint(isNight: Bool) -> Color { skyTextColor(isNight: isNight) }
+
+    /// How much to scale particle opacity at night for themes using the additive night modifier —
+    /// rain/snow should still read as present but visibly dimmer once the whole scene has darkened.
+    func particleOpacityScale(isNight: Bool) -> Double {
+        isNight && appliesNightModifier ? 0.6 : 1.0
+    }
+}
+
+extension Color {
+    /// Darkens and cools a color for a "night" look: scales RGB toward black by `brightness`, then
+    /// mixes that result toward `tint` by `tintAmount`. If the color's components can't be resolved
+    /// (shouldn't normally happen for the plain RGB literals this app uses), returns `tint` itself —
+    /// the safe/dark direction, consistent with `PixelWeatherTheme`'s own `luminance(of:)` falling
+    /// back to 0 rather than risking a light result nobody asked for.
+    func pixelNightShaded(
+        brightness: Double = 0.45,
+        tint: Color = Color(red: 0.03, green: 0.04, blue: 0.12),
+        tintAmount: Double = 0.25
+    ) -> Color {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard UIColor(self).getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return tint
+        }
+
+        var tintRed: CGFloat = 0
+        var tintGreen: CGFloat = 0
+        var tintBlue: CGFloat = 0
+        var tintAlpha: CGFloat = 0
+        guard UIColor(tint).getRed(&tintRed, green: &tintGreen, blue: &tintBlue, alpha: &tintAlpha) else {
+            return tint
+        }
+
+        let darkenedRed = Double(red) * brightness
+        let darkenedGreen = Double(green) * brightness
+        let darkenedBlue = Double(blue) * brightness
+
+        let mixedRed = darkenedRed + (Double(tintRed) - darkenedRed) * tintAmount
+        let mixedGreen = darkenedGreen + (Double(tintGreen) - darkenedGreen) * tintAmount
+        let mixedBlue = darkenedBlue + (Double(tintBlue) - darkenedBlue) * tintAmount
+
+        return Color(red: mixedRed, green: mixedGreen, blue: mixedBlue, opacity: Double(alpha))
+    }
+}
+
+extension PixelPalette {
+    /// A copy of this palette with only the scenery colors (`skyTop`, `skyBottom`, `farHill`,
+    /// `nearHill`, `ground`) darkened for night via `Color.pixelNightShaded()`. Every panel-family
+    /// field is copied unchanged, so panels look identical day and night and `fill(for:)` /
+    /// `textColor(on:)` / `accentText(on:)` — and their existing contrast tests — stay valid.
+    func nightAdjusted() -> PixelPalette {
+        PixelPalette(
+            skyTop: skyTop.pixelNightShaded(),
+            skyBottom: skyBottom.pixelNightShaded(),
+            farHill: farHill.pixelNightShaded(),
+            nearHill: nearHill.pixelNightShaded(),
+            ground: ground.pixelNightShaded(),
+            panelHighlight: panelHighlight,
+            panelShade: panelShade,
+            wood: wood,
+            woodTrim: woodTrim,
+            showroomPanel: showroomPanel,
+            hud: hud,
+            neon: neon
+        )
+    }
 }
 
 // MARK: - Fonts
@@ -579,6 +682,8 @@ struct PixelStatBar: View {
 struct PixelParallaxScene: View {
     let theme: PixelWeatherTheme
     var animate: Bool = true
+    var isNight: Bool = false
+    @Environment(PixelClock.self) private var clock: PixelClock?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -587,32 +692,27 @@ struct PixelParallaxScene: View {
     }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: shouldAnimate ? 0.25 : 60)) { timeline in
-            let step = shouldAnimate ? Int(timeline.date.timeIntervalSinceReferenceDate / 0.25) : 0
-            GeometryReader { proxy in
-                let width = proxy.size.width
-                let height = proxy.size.height
-                ZStack(alignment: .bottom) {
-                    LinearGradient(
-                        colors: [theme.palette.skyTop, theme.palette.skyBottom],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+        let step = shouldAnimate ? (clock?.step ?? 0) : 0
+        let palette = theme.scenePalette(isNight: isNight)
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            ZStack(alignment: .bottom) {
+                LinearGradient(
+                    colors: [palette.skyTop, palette.skyBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
 
-                    PixelHillLayer(color: theme.palette.farHill, heightFraction: 0.34, columns: 9, step: step, speed: 1)
-                    PixelHillLayer(color: theme.palette.nearHill, heightFraction: 0.22, columns: 7, step: step, speed: 2)
+                PixelHillLayer(color: palette.farHill, heightFraction: 0.34, columns: 9, step: step, speed: 1)
+                PixelHillLayer(color: palette.nearHill, heightFraction: 0.22, columns: 7, step: step, speed: 2)
 
-                    Rectangle()
-                        .fill(theme.palette.ground)
-                        .frame(height: height * 0.10)
+                Rectangle()
+                    .fill(palette.ground)
+                    .frame(height: height * 0.10)
 
-                    PixelSprite(theme.spriteKind, scale: 3)
-                        .position(x: width * 0.78, y: height * 0.24)
-
-                    if theme.supportsAmbientMotion {
-                        PixelWeatherParticles(theme: theme, step: step)
-                    }
-                }
+                PixelSprite(theme.spriteKind, scale: 3)
+                    .position(x: width * 0.78, y: height * 0.24)
             }
         }
         .clipped()
@@ -620,7 +720,7 @@ struct PixelParallaxScene: View {
     }
 }
 
-private struct PixelHillLayer: View {
+struct PixelHillLayer: View {
     let color: Color
     let heightFraction: CGFloat
     let columns: Int
@@ -648,27 +748,5 @@ private struct PixelHillLayer: View {
             .frame(width: width, height: height, alignment: .bottomLeading)
             .clipped()
         }
-    }
-}
-
-private struct PixelWeatherParticles: View {
-    let theme: PixelWeatherTheme
-    let step: Int
-
-    var body: some View {
-        GeometryReader { proxy in
-            let width = max(Int(proxy.size.width), 1)
-            let height = max(Int(proxy.size.height), 1)
-            ForEach(0..<12, id: \.self) { index in
-                Rectangle()
-                    .fill(theme == .snowy ? Color.white.opacity(0.85) : theme.palette.neon.opacity(0.75))
-                    .frame(width: theme == .snowy ? 4 : 2, height: theme == .snowy ? 4 : 14)
-                    .position(
-                        x: CGFloat((index * 43) % width),
-                        y: CGFloat((index * 31 + step * 17) % height)
-                    )
-            }
-        }
-        .clipped()
     }
 }

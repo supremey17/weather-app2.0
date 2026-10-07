@@ -18,10 +18,19 @@ final class WeatherViewModel {
     var avatarEnabled: Bool
     var avatarImage: UIImage?
     var avatarFaceAnchors: FaceAnchors?
-    /// Off by default (see `Preferences.isAccessoriesEnabled`) — no settings UI toggles this yet.
+    /// Off by default (see `Preferences.isAccessoriesEnabled`).
     var accessoriesEnabled: Bool
+    /// The selected accessory id for each slot, if any (see `Preferences.selectedAccessoryIDs`).
+    var selectedAccessoryIDs: [AccessorySlot: String]
     var weatherTheme: PixelWeatherTheme = .neutral
     var conditionTitle = "Weather briefing"
+    /// Whether the most recently loaded weather reading was at night, per `PixelWeatherTheme.isNight`.
+    var isNight = false
+    /// How hard the current precipitation (if any) is coming down — drives the full-page particle
+    /// effect's density/speed (see `WeatherParticleConfig.make`).
+    var precipitationIntensity: PrecipitationIntensity = .normal
+    /// The selected decorative page backdrop (see `PixelBackground`).
+    var selectedBackground: PixelBackground
 
     private let prefs: Preferences
     private let advisor = ClothingAdvisor()
@@ -37,6 +46,8 @@ final class WeatherViewModel {
         adviceEnabled = prefs.isAdviceEnabled
         avatarEnabled = prefs.isAvatarEnabled
         accessoriesEnabled = prefs.isAccessoriesEnabled
+        selectedAccessoryIDs = prefs.selectedAccessoryIDs
+        selectedBackground = prefs.selectedBackground
         service = try? WeatherService()
         if let data = avatarStore.load() {
             avatarImage = UIImage(data: data)
@@ -160,14 +171,45 @@ final class WeatherViewModel {
     var homeCity: String { prefs.homeCity ?? "" }
     var defaultUnits: Units { prefs.defaultUnits }
 
-    func saveSettings(defaultUnits: Units, homeCity: String, adviceEnabled: Bool, avatarEnabled: Bool) async {
+    /// The accessories to actually draw: empty unless both `accessoriesEnabled` and
+    /// `avatarEnabled` are on, otherwise one resolved accessory per slot that has a valid
+    /// selection, in `AccessorySlot.allCases` order. Re-validates each selection against the
+    /// current catalog (mirroring `Preferences.selectedAccessoryIDs`'s own check) so this never
+    /// trusts stale state even if `selectedAccessoryIDs` was set some other way.
+    var activeAccessories: [AvatarAccessory] {
+        guard accessoriesEnabled, avatarEnabled else { return [] }
+        return AccessorySlot.allCases.compactMap { slot in
+            guard let id = selectedAccessoryIDs[slot],
+                  let accessory = AvatarAccessory.accessory(id: id),
+                  accessory.slot == slot else {
+                return nil
+            }
+            return accessory
+        }
+    }
+
+    func saveSettings(
+        defaultUnits: Units,
+        homeCity: String,
+        adviceEnabled: Bool,
+        avatarEnabled: Bool,
+        accessoriesEnabled: Bool,
+        accessoryIDs: [AccessorySlot: String],
+        background: PixelBackground
+    ) async {
         prefs.defaultUnits = defaultUnits
         prefs.homeCity = homeCity
         prefs.isAdviceEnabled = adviceEnabled
         prefs.isAvatarEnabled = avatarEnabled
+        prefs.isAccessoriesEnabled = accessoriesEnabled
+        prefs.selectedAccessoryIDs = accessoryIDs
+        prefs.selectedBackground = background
         units = defaultUnits
         self.adviceEnabled = adviceEnabled
         self.avatarEnabled = avatarEnabled
+        self.accessoriesEnabled = accessoriesEnabled
+        self.selectedAccessoryIDs = accessoryIDs
+        self.selectedBackground = background
         await search()
     }
 
@@ -195,6 +237,13 @@ final class WeatherViewModel {
                 condition: condition,
                 epochSeconds: weather.dt,
                 timeZoneOffset: weather.timezone
+            )
+            isNight = PixelWeatherTheme.isNight(epochSeconds: weather.dt, timeZoneOffset: weather.timezone)
+            precipitationIntensity = PrecipitationIntensity.make(
+                condition: condition,
+                description: description,
+                rainOneHourMillimeters: weather.rain?.oneHour,
+                snowOneHourMillimeters: weather.snow?.oneHour
             )
             advice = advisor.advice(tempF: tempF, humidity: weather.main.humidity, condition: condition, uvi: uvi)
             details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, units: units)

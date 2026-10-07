@@ -94,19 +94,11 @@ struct AvatarView: View {
                     .scaledToFit()
                     .frame(width: accessoryWidth, height: accessoryWidth)
             } else {
-                PixelSprite(placeholderSprite(for: accessory.slot), scale: 2)
+                PixelSprite(accessory.placeholderSprite, scale: 2)
                     .frame(width: accessoryWidth, height: accessoryWidth)
             }
         }
         .position(x: position.x + offset.width, y: position.y + offset.height)
-    }
-
-    private func placeholderSprite(for slot: AccessorySlot) -> PixelSpriteKind {
-        switch slot {
-        case .head: .accessoryHatPlaceholder
-        case .eyes: .accessoryGlassesPlaceholder
-        case .mouth: .accessoryCigarettePlaceholder
-        }
     }
 }
 

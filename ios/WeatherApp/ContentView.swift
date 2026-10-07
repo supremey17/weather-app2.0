@@ -8,37 +8,72 @@ struct ContentView: View {
     @State private var suggester = CitySuggester()
     @FocusState private var cityFieldFocused: Bool
 
+    /// Shared tick for every stepped pixel animation on this page (hero scene, full-page weather
+    /// particles, animated backdrops) — one clock instead of several independent `TimelineView`s.
+    @State private var clock = PixelClock()
+    /// Plain (non-observed) stores the particle layer polls directly on each tick; writing to
+    /// these must never trigger a SwiftUI re-render, which is why they're `@State`-held reference
+    /// types rather than `@Observable`.
+    @State private var colliderStore = PanelColliderStore()
+    @State private var particleEngine = WeatherParticleEngine()
+
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Whether the shared clock should be running at all: reduce-motion, backgrounding, and any
+    /// open sheet all stop it outright, and otherwise it only runs when something on screen
+    /// actually animates (ambient weather in the hero, falling particles, or an animated
+    /// backdrop) — idle clear-day weather with the default backdrop ticks nothing, which is
+    /// cheaper than the old per-view `TimelineView`s' always-on 60s idle timer.
+    private var ambientClockActive: Bool {
+        guard !reduceMotion, scenePhase == .active,
+              !showingSettings, !showingCities, !showingAvatarPhoto else { return false }
+        if model.weatherTheme.supportsAmbientMotion { return true }
+        if WeatherParticleConfig.make(theme: model.weatherTheme, intensity: model.precipitationIntensity, isNight: model.isNight) != nil {
+            return true
+        }
+        return model.selectedBackground.isAnimated
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                model.weatherTheme.skyColor
-                    .ignoresSafeArea()
+                PixelBackgroundLayer(
+                    background: model.selectedBackground,
+                    theme: model.weatherTheme,
+                    isNight: model.isNight
+                )
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        CitySearchPanel(
+                        PixelSearchBar(
                             model: model,
                             suggester: suggester,
                             isFocused: $cityFieldFocused
                         )
+                        .weatherCollider("search")
 
                         if !suggester.suggestions.isEmpty && cityFieldFocused {
-                            CitySuggestionPanel(
+                            PixelSuggestionMenu(
                                 suggestions: suggester.suggestions,
                                 theme: model.weatherTheme,
                                 onSelect: selectSuggestion
                             )
+                            .weatherCollider("suggestions")
                         }
 
                         if model.avatarEnabled || (model.adviceEnabled && !model.advice.isEmpty) {
                             GarageCard(
                                 avatarEnabled: model.avatarEnabled,
                                 avatarImage: model.avatarImage,
+                                avatarAccessories: model.activeAccessories,
+                                avatarAnchors: model.avatarFaceAnchors,
                                 onAvatarTap: { showingAvatarPhoto = true },
                                 adviceEnabled: model.adviceEnabled,
                                 advice: model.advice,
                                 theme: model.weatherTheme
                             )
+                            .weatherCollider("garage")
                         }
 
                         WeatherHero(
@@ -47,11 +82,13 @@ struct ContentView: View {
                             resultText: model.resultText,
                             isLoading: model.isLoading,
                             theme: model.weatherTheme,
+                            isNight: model.isNight,
                             onUseLocation: useCurrentLocation
                         )
 
                         if !model.isLoading, let details = model.details {
                             WeatherDetailsView(details: details, theme: model.weatherTheme)
+                                .weatherCollider("details")
                         } else if !model.isLoading {
                             PixelPanel(theme: model.weatherTheme) {
                                 ContentUnavailableView(
@@ -61,18 +98,36 @@ struct ContentView: View {
                                 )
                                 .foregroundStyle(model.weatherTheme.panelTextColor)
                             }
+                            .weatherCollider("ready")
                         }
                     }
                     .padding()
+                    .coordinateSpace(.named("weatherContent"))
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.frame(in: .named("weatherPage")).minY
+                    } action: { newValue in
+                        colliderStore.contentOriginY = newValue
+                    }
                 }
+
+                WeatherParticleLayer(
+                    theme: model.weatherTheme,
+                    intensity: model.precipitationIntensity,
+                    isNight: model.isNight,
+                    engine: particleEngine,
+                    colliderStore: colliderStore
+                )
             }
-            .toolbarBackground(model.weatherTheme.skyColor, for: .navigationBar)
+            .coordinateSpace(.named("weatherPage"))
+            .environment(clock)
+            .environment(\.weatherColliderStore, colliderStore)
+            .toolbarBackground(model.weatherTheme.skyColor(isNight: model.isNight), for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("WEATHER JOURNEY")
                         .pixelFont(.title)
-                        .foregroundStyle(model.weatherTheme.skyTextColor)
+                        .foregroundStyle(model.weatherTheme.skyTextColor(isNight: model.isNight))
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 }
@@ -81,21 +136,21 @@ struct ContentView: View {
                     Button {
                         model.toggleCurrentCitySaved()
                     } label: {
-                        PixelSprite(model.isCurrentCitySaved ? .starFilled : .star, scale: 2, tint: model.weatherTheme.skyTint)
+                        PixelSprite(model.isCurrentCitySaved ? .starFilled : .star, scale: 2, tint: model.weatherTheme.skyTint(isNight: model.isNight))
                     }
                     .accessibilityLabel(model.isCurrentCitySaved ? "Remove city from saved" : "Save current city")
 
                     Button {
                         showingCities = true
                     } label: {
-                        PixelSprite(.map, scale: 2, tint: model.weatherTheme.skyTint)
+                        PixelSprite(.map, scale: 2, tint: model.weatherTheme.skyTint(isNight: model.isNight))
                     }
                     .accessibilityLabel("Saved cities")
 
                     Button {
                         showingSettings = true
                     } label: {
-                        PixelSprite(.gear, scale: 2, tint: model.weatherTheme.skyTint)
+                        PixelSprite(.gear, scale: 2, tint: model.weatherTheme.skyTint(isNight: model.isNight))
                     }
                     .accessibilityLabel("Settings")
                 }
@@ -112,6 +167,11 @@ struct ContentView: View {
             .task {
                 await model.start()
             }
+            .task(id: ambientClockActive) {
+                if ambientClockActive {
+                    await clock.run()
+                }
+            }
         }
     }
 
@@ -127,105 +187,24 @@ struct ContentView: View {
     }
 }
 
-private struct CitySearchPanel: View {
-    @Bindable var model: WeatherViewModel
-    let suggester: CitySuggester
-    let isFocused: FocusState<Bool>.Binding
-
-    var body: some View {
-        PixelPanel(theme: model.weatherTheme, style: .hud) {
-            HStack(spacing: 10) {
-                PixelSprite(.flag, scale: 2, tint: model.weatherTheme.accentColor)
-
-                TextField("Change city", text: $model.cityInput)
-                    .textFieldStyle(.plain)
-                    .foregroundStyle(model.weatherTheme.textColor(on: .hud))
-                    .submitLabel(.search)
-                    .focused(isFocused)
-                    .onSubmit {
-                        suggester.clear()
-                        Task { await model.search() }
-                    }
-                    .onChange(of: model.cityInput) { _, newValue in
-                        guard isFocused.wrappedValue else { return }
-                        suggester.update(query: newValue, saved: model.savedCities)
-                    }
-                    .onChange(of: isFocused.wrappedValue) { _, focused in
-                        if !focused {
-                            suggester.clear()
-                        }
-                    }
-
-                Button {
-                    suggester.clear()
-                    Task { await model.search() }
-                } label: {
-                    PixelSprite(.search, scale: 2)
-                }
-                .buttonStyle(PixelIconButtonStyle(theme: model.weatherTheme))
-                .accessibilityLabel("Search city")
-
-                Button(model.units.symbol) {
-                    suggester.clear()
-                    Task { await model.toggleUnits() }
-                }
-                .buttonStyle(PixelTextButtonStyle(theme: model.weatherTheme))
-                .accessibilityLabel("Switch temperature unit")
-            }
-        }
-    }
-}
-
-private struct CitySuggestionPanel: View {
-    let suggestions: [CitySuggestion]
-    let theme: PixelWeatherTheme
-    let onSelect: (CitySuggestion) -> Void
-
-    var body: some View {
-        PixelPanel(theme: theme) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(suggestions) { suggestion in
-                    Button {
-                        onSelect(suggestion)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(verbatim: suggestion.title)
-                            if !suggestion.subtitle.isEmpty {
-                                Text(verbatim: suggestion.subtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(theme.panelTextColor.opacity(0.72))
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("citySuggestion")
-                    .accessibilityLabel(suggestion.subtitle.isEmpty ? suggestion.title : "\(suggestion.title), \(suggestion.subtitle)")
-                }
-            }
-            .foregroundStyle(theme.panelTextColor)
-        }
-    }
-}
-
 private struct WeatherHero: View {
     let city: String
     let conditionTitle: String
     let resultText: String
     let isLoading: Bool
     let theme: PixelWeatherTheme
+    var isNight: Bool = false
     let onUseLocation: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
-            PixelParallaxScene(theme: theme, animate: theme.supportsAmbientMotion && !reduceMotion)
+            PixelParallaxScene(theme: theme, animate: theme.supportsAmbientMotion && !reduceMotion, isNight: isNight)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text(city.isEmpty ? "NEW ROUTE" : city)
                     .pixelFont(.display)
-                    .foregroundStyle(theme.skyTextColor.opacity(0.86))
+                    .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.86))
 
                 HStack(alignment: .bottom, spacing: 16) {
                     PixelSprite(theme.spriteKind, scale: 4)
@@ -233,20 +212,20 @@ private struct WeatherHero: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(conditionTitle)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(theme.skyTextColor)
+                            .foregroundStyle(theme.skyTextColor(isNight: isNight))
                         Text(resultText.isEmpty ? "Choose your next weather checkpoint." : resultText)
                             .font(.subheadline)
-                            .foregroundStyle(theme.skyTextColor.opacity(0.88))
+                            .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
                 if isLoading {
                     HStack(spacing: 8) {
-                        PixelSprite(.refresh, tint: theme.skyTint)
+                        PixelSprite(.refresh, tint: theme.skyTint(isNight: isNight))
                         Text("Updating route…")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(theme.skyTextColor)
+                            .foregroundStyle(theme.skyTextColor(isNight: isNight))
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Updating route…")
@@ -282,6 +261,8 @@ private struct WeatherHero: View {
 private struct GarageCard: View {
     let avatarEnabled: Bool
     let avatarImage: UIImage?
+    var avatarAccessories: [AvatarAccessory] = []
+    var avatarAnchors: FaceAnchors? = nil
     let onAvatarTap: () -> Void
     let adviceEnabled: Bool
     let advice: [String]
@@ -350,7 +331,12 @@ private struct GarageCard: View {
                 .accessibilityHidden(true)
 
                 Button(action: onAvatarTap) {
-                    AvatarView(image: avatarImage, size: CGSize(width: 130, height: 190))
+                    AvatarView(
+                        image: avatarImage,
+                        size: CGSize(width: 130, height: 190),
+                        accessories: avatarAccessories,
+                        anchors: avatarAnchors
+                    )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Change avatar photo")

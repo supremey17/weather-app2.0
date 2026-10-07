@@ -211,3 +211,50 @@ struct PixelWeatherThemeContrastTests {
         }
     }
 }
+
+// MARK: - Night modifier
+
+struct PixelWeatherThemeNightModifierTests {
+    @Test func dayPathIsByteForByteUnchangedFromBeforeTheNightModifier() {
+        for theme in allPixelWeatherThemes {
+            #expect(theme.skyColor(isNight: false) == theme.skyColor)
+            #expect(theme.scenePalette(isNight: false).skyTop == theme.palette.skyTop)
+            #expect(theme.skyTextColor(isNight: false) == theme.skyTextColor)
+        }
+    }
+
+    @Test func nightSkyIsStrictlyDarkerThanDaySkyForThemesThatApplyTheModifier() {
+        for theme in allPixelWeatherThemes where theme.appliesNightModifier {
+            let dayLuminance = relativeLuminance(of: theme.skyColor)
+            let nightLuminance = relativeLuminance(of: theme.skyColor(isNight: true))
+            #expect(
+                nightLuminance < dayLuminance,
+                "\(theme): night luminance \(nightLuminance) not below day luminance \(dayLuminance)"
+            )
+        }
+    }
+
+    @Test func nightSkyTextColorMeetsMinimumContrastAgainstNightSkyAndScenePalette() {
+        for theme in allPixelWeatherThemes {
+            let nightSky = theme.skyColor(isNight: true)
+            let nightText = theme.skyTextColor(isNight: true)
+            let nightPalette = theme.scenePalette(isNight: true)
+
+            let skyRatio = contrastRatio(nightSky, nightText)
+            #expect(skyRatio >= 4.5, "\(theme) night sky text contrast only \(skyRatio)")
+
+            let topRatio = contrastRatio(nightPalette.skyTop, nightText)
+            #expect(topRatio >= 4.5, "\(theme) night skyTop contrast only \(topRatio)")
+
+            let bottomRatio = contrastRatio(nightPalette.skyBottom, nightText)
+            #expect(bottomRatio >= 4.5, "\(theme) night skyBottom contrast only \(bottomRatio)")
+        }
+    }
+
+    @Test func skyTintMatchesSkyTextColorForBothDayAndNight() {
+        for theme in allPixelWeatherThemes {
+            #expect(theme.skyTint(isNight: false) == theme.skyTextColor(isNight: false))
+            #expect(theme.skyTint(isNight: true) == theme.skyTextColor(isNight: true))
+        }
+    }
+}

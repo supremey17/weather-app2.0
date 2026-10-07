@@ -12,6 +12,8 @@ struct Preferences {
     private static let adviceKey = "advice_enabled"
     private static let avatarKey = "avatar_enabled"
     private static let accessoriesKey = "accessories_enabled"
+    private static let selectedAccessoryIDsKey = "selected_accessory_ids"
+    private static let backgroundKey = "selected_background"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -63,5 +65,44 @@ struct Preferences {
     var isAccessoriesEnabled: Bool {
         get { defaults.object(forKey: Self.accessoriesKey) as? Bool ?? false }
         nonmutating set { defaults.set(newValue, forKey: Self.accessoriesKey) }
+    }
+
+    /// The selected accessory id for each slot, if any. Backed by a `[String: String]` dictionary
+    /// in `UserDefaults` (keyed by `AccessorySlot.rawValue`, since `UserDefaults` can't store a
+    /// `[AccessorySlot: String]` directly).
+    ///
+    /// Persisted data is untrusted: a corrupted, hand-edited, or stale-after-a-catalog-change
+    /// value must be silently dropped, never force-unwrapped or trusted blindly. On read, an
+    /// entry only survives if its key is a valid `AccessorySlot.rawValue` AND its value is a
+    /// known accessory id that belongs to that same slot in `AvatarAccessory.catalog`.
+    var selectedAccessoryIDs: [AccessorySlot: String] {
+        get {
+            let raw = defaults.dictionary(forKey: Self.selectedAccessoryIDsKey) as? [String: String] ?? [:]
+            var result: [AccessorySlot: String] = [:]
+            for (slotRaw, accessoryID) in raw {
+                guard let slot = AccessorySlot(rawValue: slotRaw),
+                      let accessory = AvatarAccessory.accessory(id: accessoryID),
+                      accessory.slot == slot else {
+                    continue
+                }
+                result[slot] = accessoryID
+            }
+            return result
+        }
+        nonmutating set {
+            var raw: [String: String] = [:]
+            for (slot, accessoryID) in newValue {
+                raw[slot.rawValue] = accessoryID
+            }
+            defaults.set(raw, forKey: Self.selectedAccessoryIDsKey)
+        }
+    }
+
+    /// Falls back to `.weather` (the default, weather-reactive look) on any missing, corrupt, or
+    /// unrecognized stored value — persisted data is untrusted, same rule as every other enum-backed
+    /// preference in this file.
+    var selectedBackground: PixelBackground {
+        get { PixelBackground(rawValue: defaults.string(forKey: Self.backgroundKey) ?? "") ?? .weather }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Self.backgroundKey) }
     }
 }

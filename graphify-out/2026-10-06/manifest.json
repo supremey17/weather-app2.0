@@ -30,9 +30,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherApp/AvatarView.swift": {
-    "mtime": 1791298424.0342913,
-    "seen": 1791299994.947674,
-    "ast_hash": "b6503164c83ffdf74ef0287270e9194c",
+    "mtime": 1791242261.4085379,
+    "seen": 1791243115.074673,
+    "ast_hash": "7fdcbed356b1b29264a273f611afcfc1",
     "semantic_hash": ""
   },
   "ios/WeatherApp/ClothingAdvisor.swift": {
@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherApp/ContentView.swift": {
-    "mtime": 1791299860.296787,
-    "seen": 1791299994.947686,
-    "ast_hash": "a0a8463622590e2d9b446edd7a168054",
+    "mtime": 1791242801.6613681,
+    "seen": 1791243115.074676,
+    "ast_hash": "f46ddb8c262e37f7d6960cd12effd715",
     "semantic_hash": ""
   },
   "ios/WeatherApp/LocationService.swift": {
@@ -54,9 +54,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherApp/Preferences.swift": {
-    "mtime": 1791298478.9731228,
-    "seen": 1791299994.9477031,
-    "ast_hash": "a5ec61d0e35e4a32905b8b1b79b3d0b7",
+    "mtime": 1791242181.375567,
+    "seen": 1791243115.07468,
+    "ast_hash": "8038f4abfc003612d69c64be0d107021",
     "semantic_hash": ""
   },
   "ios/WeatherApp/RequestGate.swift": {
@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherApp/SettingsView.swift": {
-    "mtime": 1791298677.0255415,
-    "seen": 1791299994.94771,
-    "ast_hash": "e3742970a940a4aeb317ed3a702aa1d2",
+    "mtime": 1791242194.7090614,
+    "seen": 1791243115.074682,
+    "ast_hash": "2b40a32065548b0626e78e9166fb0d48",
     "semantic_hash": ""
   },
   "ios/WeatherApp/WeatherApp.swift": {
@@ -96,9 +96,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherApp/WeatherViewModel.swift": {
-    "mtime": 1791298529.4690819,
-    "seen": 1791299994.9477272,
-    "ast_hash": "11c16c978984a687571679c735da3f8d",
+    "mtime": 1791242796.0512848,
+    "seen": 1791243115.074687,
+    "ast_hash": "3cfd1f3657b120aab7ca17576a793efa",
     "semantic_hash": ""
   },
   "ios/WeatherAppTests/CitySuggesterTests.swift": {
@@ -354,9 +354,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherApp/AvatarAccessory.swift": {
-    "mtime": 1791298315.7860665,
-    "seen": 1791299994.947652,
-    "ast_hash": "cc14328f0de32999cfa4602ab8ea41e5",
+    "mtime": 1791242159.6981764,
+    "seen": 1791243115.074667,
+    "ast_hash": "b0b7b4dcdf4e6e3e1755b3eaca0926a9",
     "semantic_hash": ""
   },
   "ios/WeatherApp/FaceAnchorDetector.swift": {
@@ -366,9 +366,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherApp/PixelSprites.swift": {
-    "mtime": 1791299709.3009832,
-    "seen": 1791299994.9476979,
-    "ast_hash": "e29d3a1d770cf5320e663574c3450abe",
+    "mtime": 1791242228.0521562,
+    "seen": 1791243115.074678,
+    "ast_hash": "215361e033bcacff41ce65f0dd5e671f",
     "semantic_hash": ""
   },
   "ios/WeatherApp/PixelWeatherTheme.swift": {
@@ -378,9 +378,9 @@
     "semantic_hash": ""
   },
   "ios/WeatherAppTests/AvatarAccessoryTests.swift": {
-    "mtime": 1791298776.491628,
-    "seen": 1791299994.9477289,
-    "ast_hash": "c345bab400efb703df6b69f59ee14b5d",
+    "mtime": 1791242280.406229,
+    "seen": 1791243115.074688,
+    "ast_hash": "978e77623be59194a4ffb95b717db5e3",
     "semantic_hash": ""
   },
   "ios/WeatherAppTests/PixelWeatherThemeTests.swift": {
@@ -411,66 +411,6 @@
     "mtime": 1791242151.794292,
     "seen": 1791243115.074713,
     "ast_hash": "c8853d2c1f08ef40e4ae0fbe15ca3bdb",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/PixelSearchBar.swift": {
-    "mtime": 1791299728.6966228,
-    "seen": 1791299994.947695,
-    "ast_hash": "4fbcdbf83cc4012c1443a71955fce66f",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-eyes-monocle.imageset/Contents.json": {
-    "mtime": 1791301493.166021,
-    "seen": 1791302626.224812,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-eyes-roundglasses.imageset/Contents.json": {
-    "mtime": 1791301493.1523957,
-    "seen": 1791302626.224816,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-eyes-shades.imageset/Contents.json": {
-    "mtime": 1791301493.1590025,
-    "seen": 1791302626.224819,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-head-beanie.imageset/Contents.json": {
-    "mtime": 1791301493.14583,
-    "seen": 1791302626.224821,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-head-cap.imageset/Contents.json": {
-    "mtime": 1791301493.1388974,
-    "seen": 1791302626.224823,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-head-partyhat.imageset/Contents.json": {
-    "mtime": 1791301493.1314018,
-    "seen": 1791302626.2248251,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-mouth-cigarette.imageset/Contents.json": {
-    "mtime": 1791301493.1726193,
-    "seen": 1791302626.2248268,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-mouth-lollipop.imageset/Contents.json": {
-    "mtime": 1791301493.1865644,
-    "seen": 1791302626.224829,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
-    "semantic_hash": ""
-  },
-  "ios/WeatherApp/Assets.xcassets/accessory-mouth-pipe.imageset/Contents.json": {
-    "mtime": 1791301493.1798296,
-    "seen": 1791302626.224832,
-    "ast_hash": "c2b630cc62c1aaf2d9ca0bb168cb5797",
     "semantic_hash": ""
   }
 }
