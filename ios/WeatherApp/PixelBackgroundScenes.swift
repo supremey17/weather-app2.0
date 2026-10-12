@@ -30,11 +30,18 @@ struct PixelBackgroundLayer: View {
         if background == .weather {
             theme.skyColor(isNight: isNight)
         } else if let assetName = background.assetName, let uiImage = UIImage(named: assetName) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .interpolation(.none)
-                .scaledToFill()
-                .clipped()
+            // `.scaledToFit()` instead of `.scaledToFill()`: these custom backdrops aren't
+            // necessarily shot to match a phone's tall aspect ratio (e.g. the space art is
+            // square), and filling would zoom/crop in hard enough to blow the art up past
+            // recognition and crowd out the page content on top of it. Fitting shows the whole
+            // image, letterboxed on a black backing that matches the art's own dark background.
+            Color.black
+                .overlay {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .interpolation(.none)
+                        .scaledToFit()
+                }
         } else {
             proceduralScene
         }

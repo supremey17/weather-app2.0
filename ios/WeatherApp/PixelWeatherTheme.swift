@@ -546,14 +546,14 @@ struct PixelPanel<Content: View>: View {
     /// mostly-opaque fill) instead of the plain opaque fill. Defaults to `false` so every
     /// existing call site renders exactly as before; only panels layered over the animated
     /// backgrounds/particles (weather details, the search bar, the garage card) opt in.
-    var isTranslucent: Bool = false
+    var isTranslucent: Bool = true
     let content: Content
 
     init(
         theme: PixelWeatherTheme,
         style: PixelPanelStyle = .standard,
         padding: CGFloat = 14,
-        isTranslucent: Bool = false,
+        isTranslucent: Bool = true,
         @ViewBuilder content: () -> Content
     ) {
         self.theme = theme
@@ -582,13 +582,13 @@ struct PixelPanel<Content: View>: View {
             .background {
                 if isTranslucent {
                     // Frosted glass: a blurred material backing shows the scene/particles
-                    // behind through the ~15% the fill doesn't cover, while the fill itself
+                    // behind through the half the fill doesn't cover, while the fill itself
                     // stays dominant enough that `theme.textColor(on:)`/`accentText(on:)` —
                     // computed against the fully-opaque `fill`, and contrast-tested as such —
                     // still read correctly in practice.
                     ZStack {
                         Rectangle().fill(.ultraThinMaterial)
-                        fill.opacity(0.85)
+                        fill.opacity(0.8)
                     }
                 } else {
                     fill
@@ -597,14 +597,14 @@ struct PixelPanel<Content: View>: View {
             .overlay {
                 PixelBevelShape()
                     .inset(by: 2.5)
-                    .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.55), lineWidth: 1)
             }
             .overlay {
                 PixelBevelShape()
-                    .stroke(borderColor.opacity(0.9), lineWidth: 2)
+                    .stroke(borderColor.opacity(0.99), lineWidth: 2)
             }
             .clipShape(PixelBevelShape())
-            .shadow(color: .black.opacity(0.28), radius: 0, x: 3, y: 3)
+            .shadow(color: .black.opacity(0.77), radius: 0, x: 3, y: 3)
     }
 }
 
