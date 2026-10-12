@@ -204,4 +204,83 @@ struct WeatherParticleEngineTests {
             #expect(night.baseOpacity < day.baseOpacity, "\(theme) night opacity should be dimmer than day")
         }
     }
+
+    // MARK: - 12. Wind drift wraps around the screen edges
+
+    @Test func driftCarriesParticlesSidewaysAndWrapsAtTheRightEdge() {
+        var particle = WeatherParticle(x: 198, y: 10, willSplash: false, splash: nil)
+        var rng = SplitMix64(seed: 1)
+        let config = WeatherParticleConfig(
+            kind: .rain, count: 1, speed: 10, length: 5, width: 3,
+            baseOpacity: 0.7, splashChance: 0, drift: 5
+        )
+
+        WeatherParticleEngine.tick(
+            &particle, colliders: [], config: config,
+            width: 200, height: 400, collisionsEnabled: true, rng: &rng
+        )
+
+        #expect(particle.x == 3)
+        #expect(particle.y == 20)
+    }
+
+    // MARK: - 13. Back-layer particles fall slower and never splash
+
+    @Test func backLayerParticleFallsSlowerAndPassesThroughColliders() {
+        var particle = WeatherParticle(x: 50, y: 90, willSplash: true, splash: nil, depth: 0)
+        let collider = CGRect(x: 0, y: 100, width: 100, height: 20)
+        var rng = SplitMix64(seed: 1)
+        let config = makeConfig(speed: 20, length: 5)
+
+        WeatherParticleEngine.tick(
+            &particle, colliders: [collider], config: config,
+            width: 200, height: 400, collisionsEnabled: true, rng: &rng
+        )
+
+        #expect(particle.splash == nil)
+        #expect(particle.y == 90 + 20 * WeatherParticleConfig.farSpeedFactor)
+    }
+
+    @Test func reseededBackLayerParticlesAreNeverSplashCandidates() throws {
+        let config = try #require(WeatherParticleConfig.make(theme: .rainy, intensity: .heavy, isNight: false))
+        let engine = WeatherParticleEngine(seed: 99)
+        engine.advance(to: 0, size: CGSize(width: 300, height: 600), colliders: [], contentOriginY: 0, config: config)
+
+        let back = engine.particles.filter { $0.depth == 0 }
+        #expect(!back.isEmpty)
+        #expect(back.allSatisfy { !$0.willSplash })
+    }
+
+    // MARK: - 14. Splashes last the configured number of ticks
+
+    @Test func splashStartsWithTheKindsSplashTickCount() {
+        for kind in [WeatherParticleConfig.Kind.rain, .snow] {
+            var particle = WeatherParticle(x: 50, y: 90, willSplash: true, splash: nil)
+            var rng = SplitMix64(seed: 1)
+            let config = makeConfig(kind: kind, speed: 10, length: 5)
+
+            WeatherParticleEngine.tick(
+                &particle, colliders: [CGRect(x: 0, y: 100, width: 100, height: 20)], config: config,
+                width: 200, height: 400, collisionsEnabled: true, rng: &rng
+            )
+
+            #expect(particle.splash?.ticksRemaining == WeatherParticleConfig.splashTicks(for: kind))
+            #expect(!WeatherParticleEngine.splashCells(kind: kind, elapsed: 0).isEmpty)
+        }
+    }
+
+    // MARK: - 15. Pixel snapping
+
+    @Test func pixelSnappedRoundsDownOntoTheGrid() {
+        #expect(pixelSnapped(0) == 0)
+        #expect(pixelSnapped(5.9, grid: 3) == 3)
+        #expect(pixelSnapped(6, grid: 3) == 6)
+        #expect(pixelSnapped(-1, grid: 3) == -3)
+    }
+
+    @Test func wrappedKeepsXInsideTheWidth() {
+        #expect(WeatherParticleEngine.wrapped(-2, width: 100) == 98)
+        #expect(WeatherParticleEngine.wrapped(250, width: 100) == 50)
+        #expect(WeatherParticleEngine.wrapped(42, width: 0) == 42)
+    }
 }

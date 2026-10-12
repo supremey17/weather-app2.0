@@ -12,6 +12,19 @@ struct WeatherParticleConfig: Equatable {
     let width: Double
     let baseOpacity: Double
     let splashChance: Double   // 0...1, probability a given particle CAN splash on collision
+    /// Horizontal points per tick: the wind slant on rain. Wraps around the screen edges.
+    var drift: Double = 0
+    /// Side-to-side sway amplitude in points (snow only); applied around the particle's `x`.
+    var sway: Double = 0
+    /// Share of particles on the dim, slower back layer, which never splashes on panels.
+    var farFraction: Double = 0
+
+    /// Simulation rate of the particle layer. Speeds above are "per tick" at this rate.
+    static let ticksPerSecond: Double = 20
+    /// The pixel grid every particle is snapped to when drawn, in points.
+    static let pixel: Double = 3
+    /// Back-layer particles fall at this fraction of `speed`/`drift`.
+    static let farSpeedFactor: Double = 0.55
 
     /// `nil` unless `theme` is `.rainy`, `.stormy`, or `.snowy` (the only themes with actual
     /// falling precipitation — cloudy/misty/neutral/clear never show particles, which is a
@@ -33,11 +46,20 @@ struct WeatherParticleConfig: Equatable {
     }
 
     /// The draw color for this particle kind against this theme: white for snow, `theme.palette`'s
-    /// `neon` field for rain/storm (a panel-family color that — per `PixelPalette.nightAdjusted()`
-    /// — does NOT change at night, which is intentional: the drops' own color stays consistent,
-    /// only their opacity dims).
+    /// `neon` field for rain (a panel-family color that — per `PixelPalette.nightAdjusted()` — does
+    /// NOT change at night, so the drops' own color stays consistent, only their opacity dims).
+    /// Storms use a cool lavender instead, since their neon is lightning yellow.
     func color(theme: PixelWeatherTheme) -> Color {
-        kind == .snow ? .white : theme.palette.neon
+        switch (kind, theme) {
+        case (.snow, _): .white
+        case (.rain, .stormy): Color(red: 0.70, green: 0.74, blue: 0.96)
+        case (.rain, _): theme.palette.neon
+        }
+    }
+
+    /// How many ticks a splash stays on screen before its particle respawns.
+    static func splashTicks(for kind: Kind) -> Int {
+        kind == .snow ? 8 : 6
     }
 
     /// `.stormy` uses the rain row one level up from the given intensity (light->normal,
@@ -54,18 +76,21 @@ struct WeatherParticleConfig: Equatable {
         switch intensity {
         case .light:
             return WeatherParticleConfig(
-                kind: .rain, count: 24, speed: 60, length: 12, width: 2,
-                baseOpacity: 0.55 * opacityScale, splashChance: 0.3
+                kind: .rain, count: 36, speed: 12, length: 9, width: 3,
+                baseOpacity: 0.60 * opacityScale, splashChance: 0.3,
+                drift: 1.5, farFraction: 0.45
             )
         case .normal:
             return WeatherParticleConfig(
-                kind: .rain, count: 48, speed: 90, length: 16, width: 2,
-                baseOpacity: 0.70 * opacityScale, splashChance: 0.5
+                kind: .rain, count: 70, speed: 18, length: 12, width: 3,
+                baseOpacity: 0.75 * opacityScale, splashChance: 0.5,
+                drift: 3, farFraction: 0.45
             )
         case .heavy:
             return WeatherParticleConfig(
-                kind: .rain, count: 90, speed: 130, length: 22, width: 2,
-                baseOpacity: 0.80 * opacityScale, splashChance: 0.8
+                kind: .rain, count: 120, speed: 26, length: 18, width: 3,
+                baseOpacity: 0.85 * opacityScale, splashChance: 0.8,
+                drift: 6, farFraction: 0.4
             )
         }
     }
@@ -74,21 +99,31 @@ struct WeatherParticleConfig: Equatable {
         switch intensity {
         case .light:
             return WeatherParticleConfig(
-                kind: .snow, count: 20, speed: 10, length: 4, width: 4,
-                baseOpacity: 0.85 * opacityScale, splashChance: 0.25
+                kind: .snow, count: 30, speed: 2, length: 3, width: 3,
+                baseOpacity: 0.90 * opacityScale, splashChance: 0.25,
+                drift: 0.3, sway: 6, farFraction: 0.4
             )
         case .normal:
             return WeatherParticleConfig(
-                kind: .snow, count: 36, speed: 16, length: 4, width: 4,
-                baseOpacity: 0.85 * opacityScale, splashChance: 0.40
+                kind: .snow, count: 54, speed: 3, length: 3, width: 3,
+                baseOpacity: 0.90 * opacityScale, splashChance: 0.40,
+                drift: 0.5, sway: 7, farFraction: 0.4
             )
         case .heavy:
             return WeatherParticleConfig(
-                kind: .snow, count: 60, speed: 24, length: 4, width: 4,
-                baseOpacity: 0.85 * opacityScale, splashChance: 0.60
+                kind: .snow, count: 90, speed: 4.5, length: 3, width: 3,
+                baseOpacity: 0.90 * opacityScale, splashChance: 0.60,
+                drift: 1.2, sway: 8, farFraction: 0.35
             )
         }
     }
+}
+
+/// Rounds a coordinate down onto the particle pixel grid, so every drop and flake lands on whole
+/// "game pixels" instead of sliding smoothly between them.
+func pixelSnapped(_ value: Double, grid: Double = WeatherParticleConfig.pixel) -> Double {
+    guard grid > 0, value.isFinite else { return value }
+    return (value / grid).rounded(.down) * grid
 }
 
 /// Seeded, deterministic PRNG so particle motion/spawn decisions are reproducible in tests.
@@ -140,15 +175,27 @@ private struct WeatherColliderStoreKey: EnvironmentKey {
     static let defaultValue: PanelColliderStore? = nil
 }
 
+private struct WeatherSnowCoverKey: EnvironmentKey {
+    static let defaultValue: PrecipitationIntensity? = nil
+}
+
 extension EnvironmentValues {
     var weatherColliderStore: PanelColliderStore? {
         get { self[WeatherColliderStoreKey.self] }
         set { self[WeatherColliderStoreKey.self] = newValue }
     }
+
+    /// How hard it's snowing, or `nil` when it isn't. Every `weatherCollider` panel wears a
+    /// matching pixel snow cap while this is set.
+    var weatherSnowCover: PrecipitationIntensity? {
+        get { self[WeatherSnowCoverKey.self] }
+        set { self[WeatherSnowCoverKey.self] = newValue }
+    }
 }
 
 extension View {
-    /// Tags this view as a surface falling rain/snow can splash against. Reads the ambient
+    /// Tags this view as a surface falling rain/snow can splash against (and, while it's snowing,
+    /// gives it a pixel snow cap — see `weatherSnowCover`). Reads the ambient
     /// `weatherColliderStore` from the environment; if it's `nil` (e.g. this view is reused on a
     /// screen with no particle layer, like Settings), this is a no-op — never crashes, never
     /// requires the caller to check anything.
@@ -160,9 +207,16 @@ extension View {
 private struct WeatherColliderModifier: ViewModifier {
     let id: String
     @Environment(\.weatherColliderStore) private var store: PanelColliderStore?
+    @Environment(\.weatherSnowCover) private var snowCover: PrecipitationIntensity?
 
     func body(content: Content) -> some View {
         content
+            .overlay(alignment: .top) {
+                if let snowCover {
+                    PixelSnowCap(intensity: snowCover)
+                        .offset(y: PixelSnowCap.overlap - PixelSnowCap.height(for: snowCover))
+                }
+            }
             .onGeometryChange(for: CGRect.self) { proxy in
                 proxy.frame(in: .named("weatherContent"))
             } action: { rect in
@@ -182,17 +236,28 @@ struct WeatherParticle: Equatable {
     var y: Double
     var willSplash: Bool
     var splash: Splash?
+    /// 1 = front layer (full speed, can splash on panels), 0 = dim back layer for depth.
+    var depth: Int = 1
+    /// Snow flake shape on the front layer: 0 = 2x2 block, 1 = plus, 2 = cross. Unused for rain.
+    var variant: Int = 0
+    /// Sway phase in radians, advanced every tick (only matters when `config.sway` is non-zero).
+    var phase: Double = 0
 
     struct Splash: Equatable {
         var x: Double
         var y: Double
         var ticksRemaining: Int
     }
+
+    /// Where this particle is drawn and collides horizontally: `x` plus the snow sway offset.
+    func displayX(config: WeatherParticleConfig) -> Double {
+        config.sway == 0 ? x : x + sin(phase) * config.sway
+    }
 }
 
 /// Stateful, per-tick particle simulation — pure enough to unit test directly (see
-/// `tick(_:colliders:config:height:collisionsEnabled:rng:)`), with a thin stateful wrapper
-/// (`advance`) that the SwiftUI layer drives once per clock tick.
+/// `tick(_:colliders:config:width:height:collisionsEnabled:rng:)`), with a thin stateful wrapper
+/// (`advance`) that the SwiftUI layer drives once per tick.
 final class WeatherParticleEngine {
     private(set) var particles: [WeatherParticle] = []
     private var rng: SplitMix64
@@ -203,6 +268,12 @@ final class WeatherParticleEngine {
 
     init(seed: UInt64 = 0xA11CE) {
         rng = SplitMix64(seed: seed)
+    }
+
+    /// Whether `particles` is a live simulation for this exact config and canvas size, so a paused
+    /// layer can keep showing it frozen instead of jumping to `staticScatter`.
+    func isSimulating(config: WeatherParticleConfig, size: CGSize) -> Bool {
+        !particles.isEmpty && lastConfig == config && lastSize == size
     }
 
     /// Advances the simulation to `step`, mutating `particles` in place. Idempotent per step: if
@@ -229,12 +300,14 @@ final class WeatherParticleEngine {
             let width = Double(size.width)
             let height = Double(size.height)
             particles = (0..<max(config.count, 0)).map { _ in
-                WeatherParticle(
+                var particle = WeatherParticle(
                     x: Double.random(in: 0..<max(width, 1), using: &rng),
                     y: Double.random(in: 0..<max(height, 1), using: &rng),
-                    willSplash: Double.random(in: 0..<1, using: &rng) < config.splashChance,
+                    willSplash: false,
                     splash: nil
                 )
+                WeatherParticleEngine.rollTraits(&particle, config: config, rng: &rng)
+                return particle
             }
             effectiveDelta = 1
         }
@@ -267,22 +340,12 @@ final class WeatherParticleEngine {
 
     /// Pure per-tick state transition for one particle — this is what the tests exercise directly,
     /// with no view, no engine state, no clock involved.
-    ///   - If `particle.splash` is non-nil: decrement `ticksRemaining`; at 0, respawn the particle
-    ///     (new random x in `0..<width`, `y = -Double.random(in: 0...(height * 0.25), using: &rng)`,
-    ///     re-roll `willSplash`, clear `splash`). `width` is passed in alongside `height` for this
-    ///     (add it as a parameter — `height` alone isn't enough to pick a new x).
-    ///   - Else: move `particle.y += config.speed`. If `collisionsEnabled && particle.willSplash`,
-    ///     scan `colliders` (already sorted by `minY` ascending) for the FIRST rect where
-    ///     `rect.minX...rect.maxX` contains `particle.x` AND the particle's bottom edge
-    ///     (`particle.y + config.length`) just crossed `rect.minY` this tick (i.e. it was above
-    ///     `rect.minY` before this tick's move and is at/below it now). On a match, set
-    ///     `particle.splash = Splash(x: particle.x, y: rect.minY, ticksRemaining: config.kind == .snow ? 4 : 2)`
-    ///     and do NOT also apply the `y += speed` move that would carry it past the panel (i.e.
-    ///     check for the collision using the pre-move `y` and only commit the moved `y` if no
-    ///     collision occurred — implement whichever way reads cleanest to you, the requirement is
-    ///     just that a splashing particle visually stops right at `rect.minY`, not inside/past it).
-    ///   - If (after the above) `particle.y > height`, respawn exactly as the splash-expiry case
-    ///     above (new random x/y-above-0/willSplash, no splash).
+    ///   - A splashing particle counts its splash down and respawns above the top when it ends.
+    ///   - Otherwise it falls by `config.speed` (scaled down on the back layer) and drifts sideways
+    ///     by `config.drift`, wrapping around the screen edges. A front-layer particle that
+    ///     `willSplash` stops at the FIRST collider (sorted by `minY`) whose top edge its bottom
+    ///     crosses this tick, within that collider's x-range, and splashes right at `rect.minY`.
+    ///   - Falling past `height` respawns it above the top.
     static func tick(
         _ particle: inout WeatherParticle,
         colliders: [CGRect],
@@ -302,19 +365,21 @@ final class WeatherParticleEngine {
             return
         }
 
+        let factor = particle.depth == 0 ? WeatherParticleConfig.farSpeedFactor : 1
         let previousY = particle.y
-        let movedY = previousY + config.speed
+        let movedY = previousY + config.speed * factor
 
-        if collisionsEnabled && particle.willSplash {
+        if collisionsEnabled && particle.willSplash && particle.depth == 1 {
+            let hitX = particle.displayX(config: config)
             let bottomBefore = previousY + config.length
             let bottomAfter = movedY + config.length
             for rect in colliders {
-                guard rect.minX <= particle.x, particle.x <= rect.maxX else { continue }
+                guard rect.minX <= hitX, hitX <= rect.maxX else { continue }
                 if bottomBefore < rect.minY && bottomAfter >= rect.minY {
                     particle.splash = WeatherParticle.Splash(
-                        x: particle.x,
+                        x: hitX,
                         y: rect.minY,
-                        ticksRemaining: config.kind == .snow ? 4 : 2
+                        ticksRemaining: WeatherParticleConfig.splashTicks(for: config.kind)
                     )
                     return
                 }
@@ -322,10 +387,21 @@ final class WeatherParticleEngine {
         }
 
         particle.y = movedY
+        particle.x = wrapped(particle.x + config.drift * factor, width: width)
+        if config.sway != 0 {
+            particle.phase += 0.15 * factor
+        }
 
         if particle.y > height {
             respawn(&particle, width: width, height: height, config: config, rng: &rng)
         }
+    }
+
+    /// Keeps `x` inside `0..<width`, so wind-blown particles leaving one edge come back on the other.
+    static func wrapped(_ x: Double, width: Double) -> Double {
+        guard width > 0, x.isFinite else { return x }
+        let remainder = x.truncatingRemainder(dividingBy: width)
+        return remainder < 0 ? remainder + width : remainder
     }
 
     private static func respawn(
@@ -337,34 +413,69 @@ final class WeatherParticleEngine {
     ) {
         particle.x = Double.random(in: 0..<max(width, 1), using: &rng)
         particle.y = -Double.random(in: 0...max(height * 0.25, 0), using: &rng)
-        particle.willSplash = Double.random(in: 0..<1, using: &rng) < config.splashChance
         particle.splash = nil
+        rollTraits(&particle, config: config, rng: &rng)
+    }
+
+    /// Picks a particle's layer, whether it can splash, its flake shape, and its sway phase.
+    /// Back-layer particles never splash: they're "behind" the panels.
+    private static func rollTraits(_ particle: inout WeatherParticle, config: WeatherParticleConfig, rng: inout SplitMix64) {
+        let layerRoll = Double.random(in: 0..<1, using: &rng)
+        let splashRoll = Double.random(in: 0..<1, using: &rng)
+        let shapeRoll = Int.random(in: 0..<10, using: &rng)
+        particle.depth = layerRoll < config.farFraction ? 0 : 1
+        particle.willSplash = particle.depth == 1 && splashRoll < config.splashChance
+        particle.variant = particle.depth == 0 ? 0 : (shapeRoll < 4 ? 0 : (shapeRoll < 8 ? 1 : 2))
+        particle.phase = Double.random(in: 0..<(2 * Double.pi), using: &rng)
     }
 
     /// For reduce-motion / backgrounded / clock-not-running: a static, deterministic scatter of
     /// half as many particles, no splashes, computed fresh each call (never mutates `particles`,
     /// since there's no simulation running) from a FIXED seed independent of the live `rng` —
-    /// same visual every time reduce-motion is on, which matches today's existing "frozen but
-    /// visible" particle behavior.
+    /// same visual every time reduce-motion is on.
     static func staticScatter(config: WeatherParticleConfig, size: CGSize) -> [WeatherParticle] {
         var localRNG = SplitMix64(seed: 0x5CA77E12)
         let count = max(config.count / 2, 0)
         return (0..<count).map { _ in
-            WeatherParticle(
+            var particle = WeatherParticle(
                 x: Double.random(in: 0..<max(size.width, 1), using: &localRNG),
                 y: Double.random(in: 0..<max(size.height, 1), using: &localRNG),
                 willSplash: false,
                 splash: nil
             )
+            rollTraits(&particle, config: config, rng: &localRNG)
+            particle.willSplash = false
+            return particle
+        }
+    }
+
+    /// Cells of a splash sprite at `elapsed` ticks into it, as (column, row) offsets in pixel-grid
+    /// units from the impact point; rows count upward. Rain throws a little crown that widens and
+    /// thins out; snow puffs up and settles.
+    static func splashCells(kind: WeatherParticleConfig.Kind, elapsed: Int) -> [(column: Int, row: Int)] {
+        switch kind {
+        case .rain:
+            switch elapsed {
+            case ..<2: return [(-1, 0), (1, 0)]
+            case 2..<4: return [(-1, 0), (1, 0), (-2, 1), (2, 1)]
+            default: return [(-3, 0), (3, 0), (-2, 2), (2, 2)]
+            }
+        case .snow:
+            switch elapsed {
+            case ..<3: return [(-1, 0), (0, 0), (1, 0)]
+            case 3..<6: return [(-1, 0), (1, 0), (-2, 1), (0, 1), (2, 1)]
+            default: return [(-3, 0), (3, 0), (0, 2)]
+            }
         }
     }
 }
 
 /// The full-page falling rain/snow layer. Draws via a single `Canvas` (not a `ForEach` of
-/// `Rectangle` views — at up to 90 particles redrawing 4x/second, a `ForEach` would mean SwiftUI
+/// `Rectangle` views — at up to 120 particles redrawing 20x/second, a `ForEach` would mean SwiftUI
 /// diffing view identity every tick; a `Canvas` is one view doing immediate-mode drawing, which is
-/// far cheaper). Non-interactive and hidden from accessibility — it's pure decoration layered over
-/// real content.
+/// far cheaper). Every particle is snapped to a `WeatherParticleConfig.pixel` grid, so it moves in
+/// whole game pixels. Non-interactive and hidden from accessibility — it's pure decoration
+/// layered over real content.
 struct WeatherParticleLayer: View {
     let theme: PixelWeatherTheme
     let intensity: PrecipitationIntensity
@@ -373,7 +484,6 @@ struct WeatherParticleLayer: View {
     let engine: WeatherParticleEngine
     let colliderStore: PanelColliderStore
 
-    @Environment(PixelClock.self) private var clock: PixelClock?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -384,16 +494,18 @@ struct WeatherParticleLayer: View {
     var body: some View {
         Group {
             if let config = WeatherParticleConfig.make(theme: theme, intensity: intensity, isNight: isNight) {
-                GeometryReader { _ in
-                    let step = shouldAnimate ? (clock?.step ?? 0) : 0
+                // Its own 20 fps timeline rather than the shared 4 fps `PixelClock`: rain at 4 fps
+                // reads as streaks teleporting down the screen, not falling.
+                TimelineView(.animation(minimumInterval: 1 / WeatherParticleConfig.ticksPerSecond, paused: !shouldAnimate)) { timeline in
+                    let time = timeline.date.timeIntervalSinceReferenceDate
                     Canvas { context, size in
-                        drawParticles(config: config, step: step, context: context, size: size)
+                        drawParticles(config: config, time: time, context: context, size: size)
                     }
-                    .onGeometryChange(for: CGFloat.self) {
-                        $0.frame(in: .named("weatherPage")).minY
-                    } action: { newValue in
-                        colliderStore.canvasOriginY = newValue
-                    }
+                }
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.frame(in: .named("weatherPage")).minY
+                } action: { newValue in
+                    colliderStore.canvasOriginY = newValue
                 }
             } else {
                 Color.clear
@@ -404,10 +516,11 @@ struct WeatherParticleLayer: View {
         .accessibilityHidden(true)
     }
 
-    private func drawParticles(config: WeatherParticleConfig, step: Int, context: GraphicsContext, size: CGSize) {
+    private func drawParticles(config: WeatherParticleConfig, time: TimeInterval, context: GraphicsContext, size: CGSize) {
         let colliders = colliderStore.collidersInCanvasSpace()
         let particlesToDraw: [WeatherParticle]
         if shouldAnimate {
+            let step = Int((time * WeatherParticleConfig.ticksPerSecond).rounded(.down))
             engine.advance(
                 to: step,
                 size: size,
@@ -416,69 +529,115 @@ struct WeatherParticleLayer: View {
                 config: config
             )
             particlesToDraw = engine.particles
+        } else if engine.isSimulating(config: config, size: size) {
+            particlesToDraw = engine.particles
         } else {
             particlesToDraw = WeatherParticleEngine.staticScatter(config: config, size: size)
         }
 
-        let color = config.color(theme: theme)
+        // Batched into a few paths so the whole layer is a handful of fills per frame.
+        var far = Path()
+        var near = Path()
+        var dimmed = Path()
+        var glints = Path()
+        var splashes = Path()
 
         for particle in particlesToDraw {
             if let splash = particle.splash {
-                drawSplash(splash, color: color, config: config, in: context)
-            } else {
-                drawFalling(particle, color: color, config: config, colliders: colliders, in: context)
+                addSplash(splash, config: config, to: &splashes)
+                continue
+            }
+
+            let overlapsCollider = particle.depth == 1 && colliders.contains { rect in
+                let x = particle.displayX(config: config)
+                return x >= rect.minX && x <= rect.maxX && particle.y + config.length >= rect.minY && particle.y <= rect.maxY
+            }
+
+            switch config.kind {
+            case .rain:
+                let cells = rainDropCells(particle, config: config)
+                if particle.depth == 0 {
+                    cells.forEach { far.addRect($0) }
+                } else if overlapsCollider {
+                    cells.forEach { dimmed.addRect($0) }
+                } else {
+                    // The head (bottom) cell gets a white glint on the front layer.
+                    glints.addRect(cells[0])
+                    cells.dropFirst().forEach { near.addRect($0) }
+                }
+            case .snow:
+                if particle.depth == 0 {
+                    addFlake(particle, config: config, to: &far)
+                } else if overlapsCollider {
+                    addFlake(particle, config: config, to: &dimmed)
+                } else {
+                    addFlake(particle, config: config, to: &near)
+                }
+            }
+        }
+
+        let color = config.color(theme: theme)
+        context.fill(far, with: .color(color.opacity(config.baseOpacity * 0.45)))
+        context.fill(dimmed, with: .color(color.opacity(config.baseOpacity * 0.35)))
+        context.fill(near, with: .color(color.opacity(config.baseOpacity)))
+        context.fill(glints, with: .color(.white.opacity(config.baseOpacity)))
+        context.fill(splashes, with: .color(color.opacity(config.baseOpacity)))
+
+        if theme == .stormy, shouldAnimate, let strike = LightningSchedule.strike(at: time) {
+            let strength = LightningSchedule.flashStrength(elapsed: strike.elapsed)
+            if strength > 0 {
+                context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white.opacity(0.18 * strength)))
             }
         }
     }
 
-    private func drawFalling(
-        _ particle: WeatherParticle,
-        color: Color,
-        config: WeatherParticleConfig,
-        colliders: [CGRect],
-        in context: GraphicsContext
-    ) {
-        let topY = particle.y
-        let bottomY = particle.y + config.length
-        let overlapsCollider = colliders.contains { rect in
-            particle.x >= rect.minX && particle.x <= rect.maxX && bottomY >= rect.minY && topY <= rect.maxY
-        }
-        let opacity = overlapsCollider ? config.baseOpacity * 0.35 : config.baseOpacity
+    /// A slanted, stair-stepped streak of whole pixels: the head (bottom) cell first, then each
+    /// cell above it stepping back against the wind. Never empty.
+    private func rainDropCells(_ particle: WeatherParticle, config: WeatherParticleConfig) -> [CGRect] {
+        let px = WeatherParticleConfig.pixel
+        let factor = particle.depth == 0 ? WeatherParticleConfig.farSpeedFactor : 1
+        let count = max(Int((config.length * factor / px).rounded()), 1)
+        let slope = config.speed > 0 ? config.drift / config.speed : 0
+        let headX = pixelSnapped(particle.x)
+        let headY = pixelSnapped(particle.y + config.length * factor - px)
 
-        let rect: CGRect
-        if config.kind == .snow {
-            rect = CGRect(
-                x: particle.x - config.width / 2,
-                y: particle.y - config.length / 2,
-                width: config.width,
-                height: config.length
-            )
-        } else {
-            rect = CGRect(x: particle.x - config.width / 2, y: particle.y, width: config.width, height: config.length)
+        return (0..<count).map { index in
+            let rise = Double(index) * px
+            return CGRect(x: pixelSnapped(headX - slope * rise), y: headY - rise, width: px, height: px)
         }
-        context.fill(Path(rect), with: .color(color.opacity(opacity)))
     }
 
-    private func drawSplash(
-        _ splash: WeatherParticle.Splash,
-        color: Color,
-        config: WeatherParticleConfig,
-        in context: GraphicsContext
-    ) {
-        let maxTicks = Double(config.kind == .snow ? 4 : 2)
-        let progress = maxTicks > 0 ? Double(splash.ticksRemaining) / maxTicks : 0
-        let dabCount = 3
-        for index in 0..<dabCount {
-            let fraction = Double(index) / Double(dabCount - 1)
-            let dx = (fraction - 0.5) * config.length
-            let dabSize = max(config.width * 0.8 * progress, 0.5)
-            let dabRect = CGRect(
-                x: splash.x + dx - dabSize / 2,
-                y: splash.y - dabSize / 2,
-                width: dabSize,
-                height: dabSize
-            )
-            context.fill(Path(ellipseIn: dabRect), with: .color(color.opacity(config.baseOpacity * max(progress, 0.2))))
+    /// A chunky pixel flake: one cell on the back layer, and a 2x2 block, plus, or cross up front.
+    private func addFlake(_ particle: WeatherParticle, config: WeatherParticleConfig, to path: inout Path) {
+        let px = WeatherParticleConfig.pixel
+        let centerX = pixelSnapped(particle.displayX(config: config))
+        let centerY = pixelSnapped(particle.y)
+        let offsets: [(Int, Int)]
+        if particle.depth == 0 {
+            offsets = [(0, 0)]
+        } else {
+            switch particle.variant {
+            case 1: offsets = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]
+            case 2: offsets = [(0, 0), (-1, -1), (1, -1), (-1, 1), (1, 1)]
+            default: offsets = [(0, 0), (1, 0), (0, 1), (1, 1)]
+            }
+        }
+        for (column, row) in offsets {
+            path.addRect(CGRect(x: centerX + Double(column) * px, y: centerY + Double(row) * px, width: px, height: px))
+        }
+    }
+
+    private func addSplash(_ splash: WeatherParticle.Splash, config: WeatherParticleConfig, to path: inout Path) {
+        let px = WeatherParticleConfig.pixel
+        let elapsed = WeatherParticleConfig.splashTicks(for: config.kind) - splash.ticksRemaining
+        let originX = pixelSnapped(splash.x)
+        for cell in WeatherParticleEngine.splashCells(kind: config.kind, elapsed: elapsed) {
+            path.addRect(CGRect(
+                x: originX + Double(cell.column) * px,
+                y: splash.y - Double(cell.row + 1) * px,
+                width: px,
+                height: px
+            ))
         }
     }
 }
