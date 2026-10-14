@@ -1,7 +1,7 @@
 import Foundation
 
-/// A switchable decorative backdrop for the main page. `.weather` is the existing weather-reactive
-/// sky/hills look (today's only option); the rest are purely cosmetic scenes that the weather
+/// A switchable decorative backdrop for the main page. `.weather` is the default weather-reactive
+/// pixel sky and hills; the rest are purely cosmetic scenes that the weather
 /// particle layer and the day/night tint always render on top of — see
 /// `PixelBackgroundScenes.swift` for how each one is drawn, and `Preferences.selectedBackground`
 /// for how the choice is persisted.
@@ -28,27 +28,10 @@ enum PixelBackground: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The `Assets.xcassets` imageset a custom override lives in, or `nil` for `.weather` (which
-    /// has no custom-art slot — it's the existing theme-driven sky, not a static scene). Scaffolded
-    /// as empty slots; `PixelBackgroundLayer` falls back to the procedural scene when empty, same
-    /// pattern as `AvatarAccessory.assetName`.
+    /// Custom artwork shown instead of the drawn stock scene. Only Space has one; every other
+    /// backdrop is always its stock pixel scene.
     var assetName: String? {
-        switch self {
-        case .weather: nil
-        case .space: "background-space"
-        case .cherryBlossom: "background-cherryblossom"
-        case .mountains: "background-mountains"
-        case .river: "background-river"
-        case .ocean: "background-ocean"
-        case .beach: "background-beach"
-        }
-    }
-
-    /// Whether this background's own scene has ambient motion (twinkling stars, drifting petals,
-    /// waves, …) and therefore needs the shared `PixelClock` running. `.weather` is driven by the
-    /// existing theme/particle logic, not by this flag.
-    var isAnimated: Bool {
-        self != .weather
+        self == .space ? "background-space" : nil
     }
 
     /// Steps to the next (`forward: true`) or previous backdrop, wrapping at both ends. There's no

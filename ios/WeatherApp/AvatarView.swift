@@ -86,18 +86,12 @@ struct AvatarView: View {
             height: accessory.anchorOffset.height * faceWidthPoints
         )
 
-        Group {
-            if let uiImage = UIImage(named: accessory.assetName) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .interpolation(.none)
-                    .scaledToFit()
-                    .frame(width: accessoryWidth, height: accessoryWidth)
-            } else {
-                PixelSprite(accessory.placeholderSprite, scale: 2)
-                    .frame(width: accessoryWidth, height: accessoryWidth)
-            }
+        // Drawn straight into a canvas sized to the face so the sprite scales with it.
+        Canvas { context, canvasSize in
+            accessory.sprite.draw(in: context, unit: canvasSize.width / 16)
         }
+        .frame(width: accessoryWidth, height: accessoryWidth)
+        .accessibilityHidden(true)
         .position(x: position.x + offset.width, y: position.y + offset.height)
     }
 }

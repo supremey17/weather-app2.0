@@ -7,9 +7,9 @@ struct AvatarAccessoryTests {
 
     // MARK: - AvatarAccessory.catalog
 
-    @Test func catalogHasUniqueAssetNames() {
-        let names = AvatarAccessory.catalog.map(\.assetName)
-        #expect(Set(names).count == names.count)
+    @Test func catalogHasUniqueSprites() {
+        let sprites = AvatarAccessory.catalog.map(\.sprite)
+        #expect(Set(sprites).count == sprites.count)
     }
 
     @Test func catalogHasUniqueIDs() {

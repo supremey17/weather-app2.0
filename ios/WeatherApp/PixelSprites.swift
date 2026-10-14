@@ -44,18 +44,17 @@ enum PixelSpriteKind: String, CaseIterable {
     case sliders
     case refresh
 
-    // Avatar accessory placeholders (scaffold — see `AvatarAccessory`). These stand in for real
-    // pixel-art PNGs that don't exist yet; each is deliberately simple and shape-based so it
-    // reads as an obvious placeholder rather than finished art.
-    case accessoryHatPlaceholder
-    case accessoryCapPlaceholder
-    case accessoryBeaniePlaceholder
-    case accessoryGlassesPlaceholder
-    case accessoryShadesPlaceholder
-    case accessoryMonoclePlaceholder
-    case accessoryCigarettePlaceholder
-    case accessoryPipePlaceholder
-    case accessoryLollipopPlaceholder
+    // Avatar accessories (see `AvatarAccessory.sprite`): full-color game sprites, drawn with the
+    // extra palette characters in `color(for:tint:)` rather than the tintable icon palette.
+    case accessoryPartyHat
+    case accessoryCap
+    case accessoryBeanie
+    case accessoryRoundGlasses
+    case accessoryShades
+    case accessoryMonocle
+    case accessoryCigarette
+    case accessoryPipe
+    case accessoryLollipop
 
     /// Maps the SF Symbol names previously used across the app onto the closest original sprite,
     /// so call sites that stored a symbol string (e.g. `DetailItem.symbol`) keep working.
@@ -107,9 +106,7 @@ extension PixelSpriteKind {
     /// when one exists and falls back to the hand-drawn `grid` below when it's empty, same
     /// named-asset-first pattern as `AvatarView`/`PixelBackgroundLayer`.
     ///
-    /// `nil` for the avatar-accessory placeholder cases: those already have their own override path
-    /// through `AvatarAccessory.assetName` (checked by `AvatarView`, not here), so a second,
-    /// competing slot on the sprite itself would be redundant and confusing.
+    /// `nil` for the avatar accessories: their hand-drawn grids are the finished art.
     var customAssetName: String? {
         switch self {
         case .sun: "icon-sun"
@@ -148,16 +145,17 @@ extension PixelSpriteKind {
         case .house: "icon-house"
         case .sliders: "icon-sliders"
         case .refresh: "icon-refresh"
-        case .accessoryHatPlaceholder, .accessoryCapPlaceholder, .accessoryBeaniePlaceholder,
-             .accessoryGlassesPlaceholder, .accessoryShadesPlaceholder, .accessoryMonoclePlaceholder,
-             .accessoryCigarettePlaceholder, .accessoryPipePlaceholder, .accessoryLollipopPlaceholder:
+        case .accessoryPartyHat, .accessoryCap, .accessoryBeanie,
+             .accessoryRoundGlasses, .accessoryShades, .accessoryMonocle,
+             .accessoryCigarette, .accessoryPipe, .accessoryLollipop:
             nil
         }
     }
 }
 
 extension PixelSpriteKind {
-    /// 16x16 grid of palette characters: '.' clear, 'K' outline, 'W' white, 'A' accent/tint, 'S' shade.
+    /// 16x16 grid of palette characters: '.' clear, 'K' outline, 'W' white, 'A' accent/tint, 'S' shade,
+    /// plus the fixed colors in `color(for:tint:)` that the accessory sprites use.
     /// TODO(workstream A): replace with hand-drawn art per case. All cases currently share one
     /// placeholder blob so the view hierarchy compiles and renders something while that work lands.
     var grid: [String] {
@@ -846,159 +844,83 @@ extension PixelSpriteKind {
                 "................",
                 "................",
             ]
-        case .accessoryHatPlaceholder:
+        case .accessoryPartyHat:
             return [
-                "................",
-                "........A.......",
-                ".......AAA......",
-                "......AAAAA.....",
-                ".....AAAAAAA....",
-                "....AAAAAAAAA...",
-                "...KKKKKKKKKKK..",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-            ]
-        case .accessoryCapPlaceholder:
-            return [
-                "................",
-                "....AAAAAAA.....",
-                "...AAAAAAAAA....",
-                "..AAAAAAAAAAA...",
-                "..KAAAAAAAAAK...",
-                "..KAAAAAAAAAK...",
-                "..KKKKKKKKKKKAAA",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-            ]
-        case .accessoryBeaniePlaceholder:
-            return [
-                "................",
-                "................",
-                "....AAAAAAA.....",
-                "...AAAAAAAAA....",
-                "..AAAAAAAAAAA...",
-                "..AAAAAAAAAAA...",
-                "..AAAAAAAAAAA...",
-                "..KKKKKKKKKKK...",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-            ]
-        case .accessoryGlassesPlaceholder:
-            return [
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "..KKKKK..KKKKK..",
-                ".KAAAAAKKKAAAAK.",
-                ".KAAAAAKKKAAAAK.",
-                ".KAAAAAK.KAAAAK.",
-                "..KKKKK...KKKKK.",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-            ]
-        case .accessoryShadesPlaceholder:
-            return [
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "..KKKKKK.KKKKK..",
-                ".KKKKKKKKKKKKKK.",
-                ".KKKKKKKKKKKKKK.",
-                ".KKKKKKKKKKKKKK.",
-                "..KKKKKK.KKKKK..",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-            ]
-        case .accessoryMonoclePlaceholder:
-            return [
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "......KKKKK.....",
-                ".....K.....K....",
-                ".....K.AAA.K....",
-                ".....K.AAA.K....",
-                ".....K.....K....",
-                "......KKKKK.....",
-                "..........K.....",
-                ".........K......",
-                "........K.......",
-                "................",
-            ]
-        case .accessoryCigarettePlaceholder:
-            return [
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "......A.........",
-                ".....AAA........",
-                "...KWWWWWWWWWW..",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-            ]
-        case .accessoryPipePlaceholder:
-            return [
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
-                "................",
+                ".......YY.......",
+                ".......KK.......",
+                "......KMMK......",
+                ".....KMYMMK.....",
+                "....KMMMMYMK....",
+                "...KGWGWGWGWK...",
                 "..KKKKKKKKKKKK..",
-                "............KK..",
-                "...........KAAK.",
-                "...........KAAK.",
-                "...........KKKK.",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
                 "................",
                 "................",
                 "................",
             ]
-        case .accessoryLollipopPlaceholder:
+        case .accessoryCap:
+            return [
+                "................",
+                ".....KKKKK......",
+                "....KRRRRRK.....",
+                "...KRRWRRRRK....",
+                "..KRRRRRRRRRK...",
+                "..KrrrrrrrrrKKK.",
+                "..KKKKKKKKKKRRRK",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+            ]
+        case .accessoryBeanie:
+            return [
+                "................",
+                ".......WW.......",
+                ".....KKWWKK.....",
+                "....KBBBBBBK....",
+                "...KBBBBBBBBK...",
+                "..KBBBBBBBBBBK..",
+                "..KbWbWbWbWbWK..",
+                "..KKKKKKKKKKKK..",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+            ]
+        case .accessoryRoundGlasses:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "..KKKK....KKKK..",
+                ".KCWCCK..KCWCCK.",
+                "KKCCCCKKKKCCCCKK",
+                ".KCCCCK..KCCCCK.",
+                "..KKKK....KKKK..",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+            ]
+        case .accessoryShades:
             return [
                 "................",
                 "................",
@@ -1006,17 +928,104 @@ extension PixelSpriteKind {
                 "................",
                 "................",
                 "................",
-                ".......KKK......",
-                "......KAAAK.....",
-                ".......AKA......",
-                "......KAAAK.....",
-                ".......KKK......",
-                "........K.......",
-                "........K.......",
-                "........K.......",
+                "KKKKKKKKKKKKKKKK",
+                ".KDWWDDKKDWWDDK.",
+                ".KDDDWDKKDDDWDK.",
+                "..KDDDDK.KDDDDK.",
+                "...KKKK...KKKK..",
+                "................",
+                "................",
+                "................",
                 "................",
                 "................",
             ]
+        case .accessoryMonocle:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "......ggggg.....",
+                ".....gCWCCCg....",
+                ".....gCCCCCg....",
+                ".....gCCCCCg....",
+                ".....gCCCCCg....",
+                "......ggggg.....",
+                "..........g.....",
+                ".........g......",
+                "........g.......",
+                "................",
+            ]
+        case .accessoryCigarette:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "...L............",
+                "..L.L...........",
+                "...L............",
+                "..ORWWWWWWWYYY..",
+                "..rrLLLLLLLNNN..",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+            ]
+        case .accessoryPipe:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "............L...",
+                "...........L.L..",
+                "..........KKKKK.",
+                "..........KOROK.",
+                "..KKKKKKKKKNNNK.",
+                ".DnnnnnnnnKNNNK.",
+                "..KKKKKKKKKnNNK.",
+                "...........KKK..",
+                "................",
+                "................",
+            ]
+        case .accessoryLollipop:
+            return [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "......KKKK......",
+                ".....KPPPPK.....",
+                "....KPWWWRPK....",
+                "....KPWRPWPK....",
+                "....KPRWWRPK....",
+                ".....KPPPPK.....",
+                "......KKKK......",
+                ".......WL.......",
+                ".......WL.......",
+                ".......LL.......",
+                "................",
+            ]
+        }
+    }
+
+    /// Paints the grid into `context`, one `unit`-sized square per palette character.
+    func draw(in context: GraphicsContext, unit: CGFloat, tint: Color? = nil) {
+        for (r, row) in grid.enumerated() {
+            for (c, char) in row.enumerated() {
+                guard let color = color(for: char, tint: tint) else { continue }
+                let rect = CGRect(x: CGFloat(c) * unit, y: CGFloat(r) * unit, width: unit, height: unit)
+                context.fill(Path(rect), with: .color(color))
+            }
         }
     }
 
@@ -1027,6 +1036,22 @@ extension PixelSpriteKind {
         case "W": .white
         case "A": tint ?? .yellow
         case "S": .black.opacity(0.35)
+        // Fixed colors for the full-color accessory sprites.
+        case "R": Color(red: 0.89, green: 0.22, blue: 0.25)
+        case "r": Color(red: 0.58, green: 0.10, blue: 0.16)
+        case "O": Color(red: 1.00, green: 0.56, blue: 0.13)
+        case "Y": Color(red: 1.00, green: 0.85, blue: 0.24)
+        case "g": Color(red: 0.86, green: 0.65, blue: 0.18)
+        case "G": Color(red: 0.30, green: 0.78, blue: 0.36)
+        case "B": Color(red: 0.22, green: 0.47, blue: 0.92)
+        case "b": Color(red: 0.12, green: 0.24, blue: 0.58)
+        case "C": Color(red: 0.62, green: 0.88, blue: 1.00).opacity(0.5)
+        case "M": Color(red: 0.62, green: 0.34, blue: 0.88)
+        case "P": Color(red: 1.00, green: 0.52, blue: 0.76)
+        case "N": Color(red: 0.58, green: 0.35, blue: 0.18)
+        case "n": Color(red: 0.36, green: 0.20, blue: 0.10)
+        case "D": Color(red: 0.13, green: 0.13, blue: 0.18)
+        case "L": Color(red: 0.80, green: 0.80, blue: 0.84)
         default: nil
         }
     }
@@ -1064,13 +1089,7 @@ struct PixelSprite: View {
                     .scaledToFit()
             } else {
                 Canvas { context, _ in
-                    for (r, row) in grid.enumerated() {
-                        for (c, char) in row.enumerated() {
-                            guard let color = kind.color(for: char, tint: tint) else { continue }
-                            let rect = CGRect(x: CGFloat(c) * unit, y: CGFloat(r) * unit, width: unit, height: unit)
-                            context.fill(Path(rect), with: .color(color))
-                        }
-                    }
+                    kind.draw(in: context, unit: unit, tint: tint)
                 }
             }
         }

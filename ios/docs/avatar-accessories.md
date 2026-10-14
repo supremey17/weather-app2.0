@@ -15,11 +15,8 @@ device."
 
 ## Art spec
 
-- Each accessory is a transparent PNG, pixel-art sized in 16px multiples — matching the
-  hand-drawn 16x16 sprite grid convention in `PixelSprites.swift` — and scaled with nearest-
-  neighbor interpolation (`interpolation(.none)`) so it stays crisp like the rest of the avatar.
-- Assets live in `Assets.xcassets` named `accessory-<slot>-<id>`, e.g. `accessory-head-partyhat`,
-  `accessory-eyes-roundglasses`, `accessory-mouth-cigarette`.
+- Each accessory is a full-color 16x16 pixel sprite in `PixelSprites.swift` (`AvatarAccessory.sprite`
+  maps an id to its sprite), drawn into a canvas sized to the face so it scales with it.
 - Each asset is documented with an anchor point (where it attaches to the face anchor for its
   slot) and a size expressed as a fraction of the detected face width (`widthFraction`), so the
   accessory scales naturally with whatever face Vision finds rather than being a fixed pixel
@@ -93,8 +90,6 @@ Explicitly out of scope for this scaffold:
 - Settings toggle UI (the `Preferences.isAccessoriesEnabled` flag exists and defaults to `false`,
   but nothing in Settings exposes it yet).
 - Accessory picker UI.
-- Real pixel-art PNGs — `AvatarAccessory.catalog`'s `assetName`s don't have matching assets yet,
-  so `AvatarView` falls back to a placeholder `PixelSprite` per slot.
 - Persisting the user's *chosen* accessory per slot. Only the catalog (what accessories exist)
   and the anchors (where a face is) exist so far — there's no "the user picked this hat" state.
 
