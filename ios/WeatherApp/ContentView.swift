@@ -80,6 +80,8 @@ struct ContentView: View {
                             city: model.cityInput,
                             conditionTitle: model.conditionTitle,
                             resultText: model.resultText,
+                            currentTemp: model.currentTemp,
+                            units: model.currentTempUnits,
                             isLoading: model.isLoading,
                             theme: model.weatherTheme,
                             isNight: model.isNight,
@@ -191,6 +193,8 @@ private struct WeatherHero: View {
     let city: String
     let conditionTitle: String
     let resultText: String
+    var currentTemp: Double? = nil
+    var units: Units = .imperial
     let isLoading: Bool
     let theme: PixelWeatherTheme
     var isNight: Bool = false
@@ -206,17 +210,32 @@ private struct WeatherHero: View {
                     .pixelFont(.display)
                     .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.86))
 
-                HStack(alignment: .bottom, spacing: 16) {
-                    PixelSprite(theme.spriteKind, scale: 4)
+                if let currentTemp {
+                    // Big arcade-style hero number, with the condition sprite riding alongside.
+                    HStack(alignment: .center, spacing: 12) {
+                        PixelTemperatureReadout(temp: currentTemp, units: units, isNight: isNight)
+                            .layoutPriority(1)
+                        Spacer(minLength: 0)
+                        PixelSprite(theme.spriteKind, scale: 4)
+                    }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(conditionTitle)
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(theme.skyTextColor(isNight: isNight))
-                        Text(resultText.isEmpty ? "Choose your next weather checkpoint." : resultText)
-                            .font(.subheadline)
-                            .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.88))
-                            .fixedSize(horizontal: false, vertical: true)
+                    Text(conditionTitle)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(theme.skyTextColor(isNight: isNight))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    HStack(alignment: .bottom, spacing: 16) {
+                        PixelSprite(theme.spriteKind, scale: 4)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(conditionTitle)
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(theme.skyTextColor(isNight: isNight))
+                            Text(resultText.isEmpty ? "Choose your next weather checkpoint." : resultText)
+                                .font(.subheadline)
+                                .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.88))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
 

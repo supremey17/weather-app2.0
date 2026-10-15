@@ -10,6 +10,11 @@ final class WeatherViewModel {
     var cityInput = ""
     var units: Units
     var resultText = ""
+    /// The current temperature in `units` from the last successful load; `nil` before any load
+    /// and after a failed one. Drives the hero's big temperature readout.
+    var currentTemp: Double?
+    /// The units `currentTemp` was fetched in (can briefly differ from `units` mid-reload).
+    var currentTempUnits: Units = .imperial
     var advice: [String] = []
     var details: WeatherDetailsResult?
     var isLoading = false
@@ -231,7 +236,9 @@ final class WeatherViewModel {
             let description = weather.weather.first?.description ?? ""
             let tempF = units == .metric ? weather.main.temp * 9 / 5 + 32 : weather.main.temp
 
-            resultText = "\(weather.name): \(weather.main.temp)\(units.symbol), \(description)"
+            currentTemp = weather.main.temp
+            currentTempUnits = units
+            resultText = "\(weather.name): \(Int(weather.main.temp.rounded()))\(units.symbol), \(description)"
             conditionTitle = description.isEmpty ? "Weather briefing" : description
             weatherTheme = PixelWeatherTheme.make(
                 condition: condition,
@@ -255,18 +262,22 @@ final class WeatherViewModel {
             resultText = "We couldn't find \(name). Check the spelling and try again."
             advice = []
             details = nil
+            currentTemp = nil
         } catch WeatherError.rateLimited {
             resultText = "Weather requests are temporarily limited. Try again in a minute."
             advice = []
             details = nil
+            currentTemp = nil
         } catch is CancellationError {
             resultText = "Weather loading was cancelled. Please try again."
             advice = []
             details = nil
+            currentTemp = nil
         } catch {
             resultText = "Weather is unavailable right now. Please try again."
             advice = []
             details = nil
+            currentTemp = nil
         }
     }
 }
