@@ -176,7 +176,193 @@ struct WeatherDetailsTests {
         #expect(sunriseItem?.value.contains("9:00") == true)
     }
 
+    @Test func fallbackDailyForecastUsesDaytimeSymbolNotMidnightMoon() {
+        // Each day's id is local midnight; the icon used to be judged at that instant, so every
+        // day showed a moon.
+        let items = [
+            ForecastItem(dt: 0, main: ForecastMain(temp: 50, tempMin: 40, tempMax: 55), weather: [WeatherInfo(main: "Clear", description: "clear sky", icon: "01n")], pop: 0, wind: nil),
+            ForecastItem(dt: 86400, main: ForecastMain(temp: 50, tempMin: 40, tempMax: 55), weather: [WeatherInfo(main: "Clouds", description: "cloudy", icon: "02n")], pop: 0, wind: nil),
+        ]
+        let forecast = ForecastResponse(list: items, city: ForecastCity(timezone: 0))
+        let days = WeatherDetails.dailyForecasts(from: forecast, timeZone: TimeZone(identifier: "UTC")!, units: .imperial)
+
+        #expect(days.map(\.symbol) == ["sun.max", "cloud.sun"])
+    }
+
+    // MARK: Open-Meteo
+
+    @Test func decodesOpenMeteoResponseWithNulls() throws {
+        let json = """
+        {
+            "latitude": 30.27, "longitude": -97.74,
+            "timezone": "America/Chicago", "utc_offset_seconds": -18000,
+            "hourly": {
+                "time": [1704067200, 1704070800],
+                "temperature_2m": [50.1, null],
+                "weather_code": [0, 3],
+                "precipitation_probability": [0, null],
+                "is_day": [0, 1]
+            },
+            "daily": {
+                "time": [1704067200],
+                "temperature_2m_max": [61.2],
+                "temperature_2m_min": [44.0],
+                "weather_code": [61],
+                "precipitation_probability_max": [80]
+            }
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: json)
+        #expect(response.timezone == "America/Chicago")
+        #expect(response.utcOffsetSeconds == -18000)
+        #expect(response.hourly?.time.count == 2)
+        #expect(response.hourly?.temperature[1] == nil)
+        #expect(response.hourly?.isDay == [0, 1])
+        #expect(response.daily?.temperatureMax == [61.2])
+        #expect(response.daily?.precipitationProbabilityMax == [80])
+    }
+
+    @Test func decodesOpenMeteoResponseMissingSectionsAndArrays() throws {
+        let json = """
+        {"timezone": "UTC", "daily": {"time": [1704067200]}}
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: json)
+        #expect(response.hourly == nil)
+        #expect(response.daily?.time == [1704067200])
+        #expect(response.daily?.temperatureMax.isEmpty == true)
+    }
+
+    @Test func wmoCodesMapToOWMConditionWords() {
+        #expect(WeatherDetails.condition(forWMOCode: 0) == "Clear")
+        #expect(WeatherDetails.condition(forWMOCode: 2) == "Clouds")
+        #expect(WeatherDetails.condition(forWMOCode: 45) == "Fog")
+        #expect(WeatherDetails.condition(forWMOCode: 53) == "Drizzle")
+        #expect(WeatherDetails.condition(forWMOCode: 63) == "Rain")
+        #expect(WeatherDetails.condition(forWMOCode: 81) == "Rain")
+        #expect(WeatherDetails.condition(forWMOCode: 75) == "Snow")
+        #expect(WeatherDetails.condition(forWMOCode: 86) == "Snow")
+        #expect(WeatherDetails.condition(forWMOCode: 95) == "Thunderstorm")
+        #expect(WeatherDetails.condition(forWMOCode: nil) == "")
+        #expect(WeatherDetails.symbolName(for: WeatherDetails.condition(forWMOCode: 45), isNight: false) == "cloud.fog")
+    }
+
+    @Test func hourlyForecastIsTwentyFourOneHourStepsFromTheCurrentHour() {
+        let openMeteo = Self.makeOpenMeteo()
+        // 02:30 UTC on the first day: the current hour slot is 02:00.
+        let now = Date(timeIntervalSince1970: TimeInterval(Self.base + 2 * 3600 + 1800))
+        let result = WeatherDetails.build(weather: Self.makeWeather(), uvi: 0, air: nil, forecast: nil, openMeteo: openMeteo, units: .imperial, now: now)
+
+        #expect(result.hourly.count == 24)
+        #expect(result.hourly.first?.id == Self.base + 2 * 3600)
+        #expect(result.hourly.last?.id == Self.base + 25 * 3600)
+        let steps = zip(result.hourly.dropFirst(), result.hourly).map { $0.id - $1.id }
+        #expect(steps.allSatisfy { $0 == 3600 })
+        #expect(result.hourly.first?.time.contains("2:00") == true)
+    }
+
+    @Test func hourlyForecastIconsFollowIsDay() {
+        let hourly = OpenMeteoHourly(
+            time: [Self.base, Self.base + 3600],
+            temperature: [50, 52],
+            weatherCode: [0, 0],
+            precipitationProbability: [0, 0],
+            isDay: [0, 1]
+        )
+        let hours = WeatherDetails.hourlyForecasts(from: hourly, nowEpoch: Self.base, timeZone: TimeZone(identifier: "UTC")!, units: .imperial)
+
+        #expect(hours.map(\.symbol) == ["moon.stars", "sun.max"])
+        #expect(hours.map(\.temp) == ["50°F", "52°F"])
+    }
+
+    @Test func dailyForecastUsesOpenMeteoFiveDaysFromTodayWithDaytimeIcons() {
+        let openMeteo = Self.makeOpenMeteo()
+        // Late on the second day (Tue 2024-01-02 23:00 UTC): today is index 1.
+        let now = Date(timeIntervalSince1970: TimeInterval(Self.base + 86400 + 23 * 3600))
+        let result = WeatherDetails.build(weather: Self.makeWeather(), uvi: 0, air: nil, forecast: nil, openMeteo: openMeteo, units: .imperial, now: now)
+
+        #expect(result.daily.count == 5)
+        #expect(result.daily.map(\.day) == ["Tue", "Wed", "Thu", "Fri", "Sat"])
+        #expect(result.daily.first?.low == "41°")
+        #expect(result.daily.first?.high == "61°F")
+        #expect(result.daily.first?.chanceOfRain == 20)
+        #expect(result.daily.first?.symbol == "sun.max")
+        #expect(result.daily.allSatisfy { !$0.symbol.contains("moon") })
+    }
+
+    @Test func lowHighComesFromOpenMeteoTodayWidenedByCurrentTemp() {
+        let openMeteo = Self.makeOpenMeteo()
+        let now = Date(timeIntervalSince1970: TimeInterval(Self.base + 12 * 3600))
+        // makeWeather: temp 70, /weather temp_min/temp_max 65/75 (must be ignored).
+        // Today's Open-Meteo range is 40...60, so the current 70 widens the high.
+        let result = WeatherDetails.build(weather: Self.makeWeather(), uvi: 0, air: nil, forecast: nil, openMeteo: openMeteo, units: .imperial, now: now)
+        let lowHigh = result.current.first { $0.label == "Low / High" }
+
+        #expect(lowHigh?.value == "40° / 70°F")
+    }
+
+    @Test func lowHighFallsBackToTodaysOWMForecastEntries() {
+        let items = [
+            ForecastItem(dt: Self.base + 9 * 3600, main: ForecastMain(temp: 62, tempMin: 50, tempMax: 90), weather: [WeatherInfo(main: "Clear", description: "clear sky", icon: "01d")], pop: 0, wind: nil),
+            ForecastItem(dt: Self.base + 15 * 3600, main: ForecastMain(temp: 78, tempMin: 50, tempMax: 90), weather: [WeatherInfo(main: "Clear", description: "clear sky", icon: "01d")], pop: 0, wind: nil),
+            // Tomorrow: must not count toward today's range.
+            ForecastItem(dt: Self.base + 30 * 3600, main: ForecastMain(temp: 95, tempMin: 95, tempMax: 95), weather: [WeatherInfo(main: "Clear", description: "clear sky", icon: "01d")], pop: 0, wind: nil),
+        ]
+        let forecast = ForecastResponse(list: items, city: ForecastCity(timezone: 0))
+        let now = Date(timeIntervalSince1970: TimeInterval(Self.base + 8 * 3600))
+        let result = WeatherDetails.build(weather: Self.makeWeather(timezoneOffset: 0), uvi: 0, air: nil, forecast: forecast, openMeteo: nil, units: .imperial, now: now)
+        let lowHigh = result.current.first { $0.label == "Low / High" }
+
+        #expect(lowHigh?.value == "62° / 78°F")
+    }
+
+    @Test func lowHighIsOmittedWithoutAnyForecastData() {
+        let result = WeatherDetails.build(weather: Self.makeWeather(), uvi: 0, air: nil, forecast: nil, units: .imperial)
+        #expect(!result.current.contains { $0.label == "Low / High" })
+    }
+
+    @Test func emptyOpenMeteoHourlyFallsBackToOWMForecast() {
+        let items = (0..<20).map { i in
+            ForecastItem(dt: i * 3 * 3600, main: ForecastMain(temp: 70, tempMin: 65, tempMax: 75), weather: [WeatherInfo(main: "Clear", description: "clear sky", icon: "01d")], pop: 0, wind: nil)
+        }
+        let forecast = ForecastResponse(list: items, city: ForecastCity(timezone: 0))
+        let openMeteo = OpenMeteoResponse(timezone: "UTC", utcOffsetSeconds: 0, hourly: nil, daily: nil)
+        let result = WeatherDetails.build(weather: Self.makeWeather(), uvi: 0, air: nil, forecast: forecast, openMeteo: openMeteo, units: .imperial)
+
+        #expect(result.hourly.count == 8)
+        #expect(!result.daily.isEmpty)
+    }
+
     // MARK: Helpers
+
+    /// 2024-01-01 00:00:00 UTC, a Monday.
+    private static let base = 1704067200
+
+    /// 48 hourly slots and 7 days from `base`, in UTC. Day i: low 40+i, high 60+i, rain chance 10*(i+1)%,
+    /// always clear (WMO 0).
+    private static func makeOpenMeteo() -> OpenMeteoResponse {
+        let hours = 0..<48
+        let days = 0..<7
+        return OpenMeteoResponse(
+            timezone: "UTC",
+            utcOffsetSeconds: 0,
+            hourly: OpenMeteoHourly(
+                time: hours.map { base + $0 * 3600 },
+                temperature: hours.map { Double(50 + $0 % 10) },
+                weatherCode: hours.map { _ in 0 },
+                precipitationProbability: hours.map { _ in 0 },
+                isDay: hours.map { ($0 % 24) >= 7 && ($0 % 24) < 17 ? 1 : 0 }
+            ),
+            daily: OpenMeteoDaily(
+                time: days.map { base + $0 * 86400 },
+                temperatureMax: days.map { Double(60 + $0) },
+                temperatureMin: days.map { Double(40 + $0) },
+                weatherCode: days.map { _ in 0 },
+                precipitationProbabilityMax: days.map { Double(10 * ($0 + 1)) }
+            )
+        )
+    }
 
     private static func makeWeather(sunrise: Int? = nil, timezoneOffset: Int? = nil) -> WeatherResponse {
         WeatherResponse(
