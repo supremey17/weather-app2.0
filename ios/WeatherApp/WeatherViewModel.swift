@@ -15,6 +15,8 @@ final class WeatherViewModel {
     var currentTemp: Double?
     /// The units `currentTemp` was fetched in (can briefly differ from `units` mid-reload).
     var currentTempUnits: Units = .imperial
+    /// A one-off problem (avatar save, location) to show under the big temperature, which hides `resultText`.
+    var notice = ""
     var advice: [String] = []
     var details: WeatherDetailsResult?
     var isLoading = false
@@ -76,12 +78,14 @@ final class WeatherViewModel {
         avatarFaceAnchors = anchors
         guard let data = processed.pngData() else {
             resultText = "Your avatar could not be saved. Please try another photo."
+            notice = resultText
             return
         }
         do {
             try avatarStore.save(data)
         } catch {
             resultText = "Your avatar could not be saved. Please try another photo."
+            notice = resultText
             return
         }
         if let anchors {
@@ -136,6 +140,7 @@ final class WeatherViewModel {
             coordinate = try await locationService.currentLocation().coordinate
         } catch {
             resultText = "Location is unavailable. Search for a city instead."
+            notice = resultText
             return
         }
         await load(city: nil) {
@@ -241,6 +246,7 @@ final class WeatherViewModel {
 
             currentTemp = weather.main.temp
             currentTempUnits = units
+            notice = ""
             resultText = "\(weather.name): \(Int(weather.main.temp.rounded()))\(units.symbol), \(description)"
             conditionTitle = description.isEmpty ? "Weather briefing" : description
             weatherTheme = PixelWeatherTheme.make(

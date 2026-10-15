@@ -80,6 +80,7 @@ struct ContentView: View {
                             city: model.cityInput,
                             conditionTitle: model.conditionTitle,
                             resultText: model.resultText,
+                            notice: model.notice,
                             currentTemp: model.currentTemp,
                             units: model.currentTempUnits,
                             isLoading: model.isLoading,
@@ -193,6 +194,7 @@ private struct WeatherHero: View {
     let city: String
     let conditionTitle: String
     let resultText: String
+    let notice: String
     var currentTemp: Double? = nil
     var units: Units = .imperial
     let isLoading: Bool
@@ -223,6 +225,13 @@ private struct WeatherHero: View {
                         .font(.title3.weight(.bold))
                         .foregroundStyle(theme.skyTextColor(isNight: isNight))
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if !notice.isEmpty {
+                        Text(notice)
+                            .font(.subheadline)
+                            .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.88))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 } else {
                     HStack(alignment: .bottom, spacing: 16) {
                         PixelSprite(theme.spriteKind, scale: 4)
