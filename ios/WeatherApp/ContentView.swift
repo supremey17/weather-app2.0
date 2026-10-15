@@ -109,6 +109,7 @@ struct ContentView: View {
                     theme: model.weatherTheme,
                     intensity: model.precipitationIntensity,
                     isNight: model.isNight,
+                    animate: ambientClockActive,
                     engine: particleEngine,
                     colliderStore: colliderStore
                 )
@@ -116,6 +117,7 @@ struct ContentView: View {
             .coordinateSpace(.named("weatherPage"))
             .environment(clock)
             .environment(\.weatherColliderStore, colliderStore)
+            .environment(\.weatherSnowCover, model.weatherTheme == .snowy ? model.precipitationIntensity : nil)
             .toolbarBackground(model.weatherTheme.skyColor(isNight: model.isNight), for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
