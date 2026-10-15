@@ -157,6 +157,90 @@ struct ForecastMain: Decodable {
     }
 }
 
+// MARK: Open-Meteo (api.open-meteo.com/v1/forecast)
+//
+// Free, keyless source for true hourly and daily data (OWM's free /forecast is 3-hourly only, and
+// /weather's temp_min/temp_max is the spread across the metro area right now, not the day's range).
+// Requested with `timeformat=unixtime`, so every `time` is epoch seconds; with `timezone=auto` the
+// daily `time` values are the city's local midnights. Values arrive already in the requested unit.
+//
+// Open-Meteo returns parallel arrays and can put `null` in any slot, so elements are Optional, and
+// a missing array decodes as empty rather than failing the whole response.
+
+struct OpenMeteoResponse: Decodable {
+    /// IANA identifier, e.g. "America/Chicago" (because of `timezone=auto`).
+    let timezone: String?
+    let utcOffsetSeconds: Int?
+    let hourly: OpenMeteoHourly?
+    let daily: OpenMeteoDaily?
+
+    enum CodingKeys: String, CodingKey {
+        case timezone
+        case utcOffsetSeconds = "utc_offset_seconds"
+        case hourly
+        case daily
+    }
+}
+
+struct OpenMeteoHourly: Decodable {
+    let time: [Int]
+    let temperature: [Double?]
+    let weatherCode: [Int?]
+    /// 0...100.
+    let precipitationProbability: [Double?]
+    /// 1 during daylight, 0 at night.
+    let isDay: [Int?]
+
+    enum CodingKeys: String, CodingKey {
+        case time
+        case temperature = "temperature_2m"
+        case weatherCode = "weather_code"
+        case precipitationProbability = "precipitation_probability"
+        case isDay = "is_day"
+    }
+}
+
+extension OpenMeteoHourly {
+    // In an extension so the memberwise initializer (used by tests) is kept.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        time = try container.decodeIfPresent([Int].self, forKey: .time) ?? []
+        temperature = try container.decodeIfPresent([Double?].self, forKey: .temperature) ?? []
+        weatherCode = try container.decodeIfPresent([Int?].self, forKey: .weatherCode) ?? []
+        precipitationProbability = try container.decodeIfPresent([Double?].self, forKey: .precipitationProbability) ?? []
+        isDay = try container.decodeIfPresent([Int?].self, forKey: .isDay) ?? []
+    }
+}
+
+struct OpenMeteoDaily: Decodable {
+    /// Local midnight of each day, as epoch seconds.
+    let time: [Int]
+    let temperatureMax: [Double?]
+    let temperatureMin: [Double?]
+    let weatherCode: [Int?]
+    /// 0...100.
+    let precipitationProbabilityMax: [Double?]
+
+    enum CodingKeys: String, CodingKey {
+        case time
+        case temperatureMax = "temperature_2m_max"
+        case temperatureMin = "temperature_2m_min"
+        case weatherCode = "weather_code"
+        case precipitationProbabilityMax = "precipitation_probability_max"
+    }
+}
+
+extension OpenMeteoDaily {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        time = try container.decodeIfPresent([Int].self, forKey: .time) ?? []
+        temperatureMax = try container.decodeIfPresent([Double?].self, forKey: .temperatureMax) ?? []
+        temperatureMin = try container.decodeIfPresent([Double?].self, forKey: .temperatureMin) ?? []
+        weatherCode = try container.decodeIfPresent([Int?].self, forKey: .weatherCode) ?? []
+        precipitationProbabilityMax = try container.decodeIfPresent([Double?].self, forKey: .precipitationProbabilityMax) ?? []
+    }
+}
+
 /// "imperial" / "metric" are the exact values OpenWeatherMap expects in the `units` query param.
 enum Units: String, CaseIterable, Identifiable {
     case imperial

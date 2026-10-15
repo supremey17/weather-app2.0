@@ -223,9 +223,12 @@ final class WeatherViewModel {
             async let uviResult = service.uvIndex(lat: weather.coord.lat, lon: weather.coord.lon)
             async let airResult = service.airQuality(lat: weather.coord.lat, lon: weather.coord.lon)
             async let forecastResult = service.forecast(lat: weather.coord.lat, lon: weather.coord.lon, units: units)
+            async let openMeteoResult = service.openMeteoForecast(lat: weather.coord.lat, lon: weather.coord.lon, units: units)
             let uvi = (try? await uviResult) ?? 0
             let air = (try? await airResult) ?? nil
             let forecast = (try? await forecastResult) ?? nil
+            // Optional: if Open-Meteo fails, WeatherDetails falls back to the OWM 3-hour forecast.
+            let openMeteo = (try? await openMeteoResult) ?? nil
 
             let condition = weather.weather.first?.main ?? ""
             let description = weather.weather.first?.description ?? ""
@@ -246,7 +249,7 @@ final class WeatherViewModel {
                 snowOneHourMillimeters: weather.snow?.oneHour
             )
             advice = advisor.advice(tempF: tempF, humidity: weather.main.humidity, condition: condition, uvi: uvi)
-            details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, units: units)
+            details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, openMeteo: openMeteo, units: units)
 
             let searched = city ?? weather.name
             cityInput = searched
