@@ -41,7 +41,7 @@ struct PixelSpriteKindGridTests {
     }
 
     @Test func everyCharacterIsAKnownPaletteCharacter() {
-        let allowed: Set<Character> = [".", "K", "W", "A", "S"]
+        let allowed: Set<Character> = [".", "K", "W", "A", "S", "R", "r", "O", "Y", "g", "G", "B", "b", "C", "M", "P", "N", "n", "D", "L"]
         for kind in PixelSpriteKind.allCases {
             for (index, row) in kind.grid.enumerated() {
                 for char in row {
@@ -231,13 +231,11 @@ struct PixelWeatherThemeContrastTests {
 /// (blurred material behind an 0.85-opacity fill) is verified by build/manual inspection per the
 /// task instructions, not by a contrived unit test.
 struct PixelPanelTranslucencyTests {
-    @Test func omittingIsTranslucentCompilesAndDefaultsToOpaque() {
-        // If this compiles, `isTranslucent` has a default and every call site that omits it
-        // (the overwhelming majority of `PixelPanel(...)` usages in the app) is unaffected.
+    @Test func omittingIsTranslucentDefaultsToSeeThrough() {
         let panel = PixelPanel(theme: .clearDay, style: .standard) {
             Text(verbatim: "")
         }
-        #expect(panel.isTranslucent == false)
+        #expect(panel.isTranslucent == true)
     }
 
     @Test func explicitIsTranslucentTrueIsStoredAsPassed() {

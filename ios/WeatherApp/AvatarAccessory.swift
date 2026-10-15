@@ -9,16 +9,12 @@ enum AccessorySlot: String, CaseIterable, Codable {
     case mouth
 }
 
-/// One wearable accessory: its `Assets.xcassets` artwork, which slot it occupies, and how big it
-/// renders relative to the detected face. See `ios/docs/avatar-accessories.md` for the full
-/// design, including the `accessory-<slot>-<id>` asset naming convention `assetName` follows.
+/// One wearable accessory: which slot it occupies and how big it renders relative to the detected
+/// face. Its artwork is the pixel sprite named by `sprite`. See `ios/docs/avatar-accessories.md`.
 struct AvatarAccessory: Identifiable, Codable, Equatable {
-    /// Short, stable, unique slug — also the `<id>` half of `assetName`'s naming convention.
+    /// Short, stable, unique slug; what `Preferences` persists.
     let id: String
     let slot: AccessorySlot
-    /// Expected to match an asset named `accessory-<slot>-<id>` in `Assets.xcassets`. That asset
-    /// doesn't have to exist yet: `AvatarView` falls back to a placeholder sprite if it's missing.
-    let assetName: String
     /// Size relative to the detected face width, e.g. `1.3` renders 1.3x as wide as the face.
     let widthFraction: Double
     /// Fine-tuning offset from the slot's anchor point, in face-width units. `.zero` means
@@ -27,44 +23,42 @@ struct AvatarAccessory: Identifiable, Codable, Equatable {
 }
 
 extension AvatarAccessory {
-    /// Placeholder catalog: three items per slot. No real artwork exists for these yet (see the
-    /// design doc's "still to build" section) — `AvatarView` falls back to a per-item placeholder
-    /// sprite (see `placeholderSprite` below) until real `Assets.xcassets` entries land.
+    /// The catalog: three items per slot, each drawn by its `sprite`.
     static let catalog: [AvatarAccessory] = [
         AvatarAccessory(
-            id: "partyhat", slot: .head, assetName: "accessory-head-partyhat",
+            id: "partyhat", slot: .head,
             widthFraction: 1.3, anchorOffset: CGSize(width: 0, height: -0.35)
         ),
         AvatarAccessory(
-            id: "cap", slot: .head, assetName: "accessory-head-cap",
+            id: "cap", slot: .head,
             widthFraction: 1.15, anchorOffset: CGSize(width: 0, height: -0.3)
         ),
         AvatarAccessory(
-            id: "beanie", slot: .head, assetName: "accessory-head-beanie",
+            id: "beanie", slot: .head,
             widthFraction: 1.2, anchorOffset: CGSize(width: 0, height: -0.22)
         ),
         AvatarAccessory(
-            id: "roundglasses", slot: .eyes, assetName: "accessory-eyes-roundglasses",
+            id: "roundglasses", slot: .eyes,
             widthFraction: 0.9
         ),
         AvatarAccessory(
-            id: "shades", slot: .eyes, assetName: "accessory-eyes-shades",
+            id: "shades", slot: .eyes,
             widthFraction: 0.95
         ),
         AvatarAccessory(
-            id: "monocle", slot: .eyes, assetName: "accessory-eyes-monocle",
+            id: "monocle", slot: .eyes,
             widthFraction: 0.35, anchorOffset: CGSize(width: 0.18, height: 0.02)
         ),
         AvatarAccessory(
-            id: "cigarette", slot: .mouth, assetName: "accessory-mouth-cigarette",
+            id: "cigarette", slot: .mouth,
             widthFraction: 0.25, anchorOffset: CGSize(width: 0.2, height: 0)
         ),
         AvatarAccessory(
-            id: "pipe", slot: .mouth, assetName: "accessory-mouth-pipe",
+            id: "pipe", slot: .mouth,
             widthFraction: 0.3, anchorOffset: CGSize(width: 0.2, height: 0.08)
         ),
         AvatarAccessory(
-            id: "lollipop", slot: .mouth, assetName: "accessory-mouth-lollipop",
+            id: "lollipop", slot: .mouth,
             widthFraction: 0.22, anchorOffset: CGSize(width: 0.05, height: 0.05)
         ),
     ]
@@ -105,21 +99,20 @@ extension AvatarAccessory {
 }
 
 extension AvatarAccessory {
-    /// The placeholder sprite `AvatarView` draws for this accessory when its real
-    /// `Assets.xcassets` artwork (named by `assetName`) doesn't exist yet. Not part of `Codable`
-    /// — purely a UI-layer lookup from `id` to art, kept separate from the persisted shape above.
-    var placeholderSprite: PixelSpriteKind {
+    /// The pixel sprite `AvatarView` draws for this accessory. Not part of `Codable` — purely a
+    /// UI-layer lookup from `id` to art, kept separate from the persisted shape above.
+    var sprite: PixelSpriteKind {
         switch id {
-        case "partyhat": .accessoryHatPlaceholder
-        case "cap": .accessoryCapPlaceholder
-        case "beanie": .accessoryBeaniePlaceholder
-        case "roundglasses": .accessoryGlassesPlaceholder
-        case "shades": .accessoryShadesPlaceholder
-        case "monocle": .accessoryMonoclePlaceholder
-        case "cigarette": .accessoryCigarettePlaceholder
-        case "pipe": .accessoryPipePlaceholder
-        case "lollipop": .accessoryLollipopPlaceholder
-        default: .accessoryHatPlaceholder
+        case "partyhat": .accessoryPartyHat
+        case "cap": .accessoryCap
+        case "beanie": .accessoryBeanie
+        case "roundglasses": .accessoryRoundGlasses
+        case "shades": .accessoryShades
+        case "monocle": .accessoryMonocle
+        case "cigarette": .accessoryCigarette
+        case "pipe": .accessoryPipe
+        case "lollipop": .accessoryLollipop
+        default: .accessoryPartyHat
         }
     }
 }

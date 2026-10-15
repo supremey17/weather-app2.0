@@ -22,17 +22,9 @@ struct ContentView: View {
 
     /// Whether the shared clock should be running at all: reduce-motion, backgrounding, and any
     /// open sheet all stop it outright, and otherwise it only runs when something on screen
-    /// actually animates (ambient weather in the hero, falling particles, or an animated
-    /// backdrop) — idle clear-day weather with the default backdrop ticks nothing, which is
-    /// cheaper than the old per-view `TimelineView`s' always-on 60s idle timer.
+    /// actually animates — and every backdrop now does (passing animals, drifting clouds).
     private var ambientClockActive: Bool {
-        guard !reduceMotion, scenePhase == .active,
-              !showingSettings, !showingCities, !showingAvatarPhoto else { return false }
-        if model.weatherTheme.supportsAmbientMotion { return true }
-        if WeatherParticleConfig.make(theme: model.weatherTheme, intensity: model.precipitationIntensity, isNight: model.isNight) != nil {
-            return true
-        }
-        return model.selectedBackground.isAnimated
+        !reduceMotion && scenePhase == .active && !showingSettings && !showingCities && !showingAvatarPhoto
     }
 
     var body: some View {
