@@ -35,6 +35,8 @@ Requires iOS 17. No third-party packages.
 
 The UV index comes from One Call API 4.0, which needs its own OpenWeatherMap subscription. Without it the app still shows the weather, just without UV advice.
 
+The "Next 24 hours" (hourly), "5-day forecast" and today's "Low / High" come from [Open-Meteo](https://open-meteo.com) (free, no API key; the OWM key is never sent to it). OWM's free `/forecast` is only 3-hourly, and `/weather`'s `temp_min`/`temp_max` is the spread across the metro area right now, not the day's range. If Open-Meteo is unreachable, the app falls back to OWM's 3-hour forecast. Open-Meteo calls go through `RequestGate` like the rest.
+
 ## API usage limits
 
 Every install calls OpenWeatherMap directly with the same key, so all users share one quota (about 60 calls/min on the free tier). Every request goes through `RequestGate.swift`, which:
