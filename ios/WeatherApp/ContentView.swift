@@ -54,20 +54,6 @@ struct ContentView: View {
                             .weatherCollider("suggestions")
                         }
 
-                        if model.avatarEnabled || (model.adviceEnabled && !model.advice.isEmpty) {
-                            GarageCard(
-                                avatarEnabled: model.avatarEnabled,
-                                avatarImage: model.avatarImage,
-                                avatarAccessories: model.activeAccessories,
-                                avatarAnchors: model.avatarFaceAnchors,
-                                onAvatarTap: { showingAvatarPhoto = true },
-                                adviceEnabled: model.adviceEnabled,
-                                advice: model.advice,
-                                theme: model.weatherTheme
-                            )
-                            .weatherCollider("garage")
-                        }
-
                         WeatherHero(
                             city: model.cityInput,
                             conditionTitle: model.conditionTitle,
@@ -78,8 +64,21 @@ struct ContentView: View {
                             isLoading: model.isLoading,
                             theme: model.weatherTheme,
                             isNight: model.isNight,
-                            onUseLocation: useCurrentLocation
+                            onUseLocation: useCurrentLocation,
+                            loadout: (model.avatarEnabled || (model.adviceEnabled && !model.advice.isEmpty))
+                                ? GarageLoadoutSection(
+                                    avatarEnabled: model.avatarEnabled,
+                                    avatarImage: model.avatarImage,
+                                    avatarAccessories: model.activeAccessories,
+                                    avatarAnchors: model.avatarFaceAnchors,
+                                    onAvatarTap: { showingAvatarPhoto = true },
+                                    adviceEnabled: model.adviceEnabled,
+                                    advice: model.advice,
+                                    theme: model.weatherTheme
+                                )
+                                : nil
                         )
+                        .weatherCollider("hero")
 
                         if !model.isLoading, let details = model.details {
                             WeatherDetailsView(details: details, theme: model.weatherTheme)
@@ -195,16 +194,20 @@ private struct WeatherHero: View {
     let theme: PixelWeatherTheme
     var isNight: Bool = false
     let onUseLocation: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The garage loadout (avatar + gear check), shown in the lower half of the same window.
+    /// `nil` when there's nothing to show.
+    var loadout: GarageLoadoutSection? = nil
+
+    private var textColor: Color { theme.textColor(on: .showroom) }
 
     var body: some View {
-        ZStack {
-            PixelParallaxScene(theme: theme, animate: theme.supportsAmbientMotion && !reduceMotion, isNight: isNight)
-
+        // One see-through window over the page backdrop: no separate sky/hills/ground scene,
+        // since the full-page background already provides it.
+        PixelPanel(theme: theme, style: .showroom, isTranslucent: true) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(city.isEmpty ? "NEW ROUTE" : city)
                     .pixelFont(.display)
-                    .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.86))
+                    .foregroundStyle(textColor.opacity(0.86))
 
                 if let currentTemp {
                     // Big arcade-style hero number, with the condition sprite riding alongside.
@@ -217,13 +220,13 @@ private struct WeatherHero: View {
 
                     Text(conditionTitle)
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(theme.skyTextColor(isNight: isNight))
+                        .foregroundStyle(textColor)
                         .fixedSize(horizontal: false, vertical: true)
 
                     if !notice.isEmpty {
                         Text(notice)
                             .font(.subheadline)
-                            .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.88))
+                            .foregroundStyle(textColor.opacity(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 } else {
@@ -233,10 +236,10 @@ private struct WeatherHero: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(conditionTitle)
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(theme.skyTextColor(isNight: isNight))
+                                .foregroundStyle(textColor)
                             Text(resultText.isEmpty ? "Choose your next weather checkpoint." : resultText)
                                 .font(.subheadline)
-                                .foregroundStyle(theme.skyTextColor(isNight: isNight).opacity(0.88))
+                                .foregroundStyle(textColor.opacity(0.88))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -244,10 +247,10 @@ private struct WeatherHero: View {
 
                 if isLoading {
                     HStack(spacing: 8) {
-                        PixelSprite(.refresh, tint: theme.skyTint(isNight: isNight))
+                        PixelSprite(.refresh, tint: textColor)
                         Text("Updating route…")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(theme.skyTextColor(isNight: isNight))
+                            .foregroundStyle(textColor)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Updating route…")
@@ -264,23 +267,22 @@ private struct WeatherHero: View {
                     .accessibilityLabel("Use my approximate location")
                     .accessibilityHint("Requests your location once to find local weather.")
                 }
+
+                if let loadout {
+                    loadout
+                        .padding(.top, 6)
+                }
             }
-            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(.white.opacity(0.75), lineWidth: 2)
-        }
-        .shadow(color: .black.opacity(0.32), radius: 0, x: 4, y: 4)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 
-/// Car Racer-style garage showroom card: the avatar stands on a small spotlit stage on
-/// one side, with the day's gear checklist racked up on the other. Only shown when there's
-/// something to display (an avatar, or non-empty gear advice).
-private struct GarageCard: View {
+/// Car Racer-style garage showroom section of the location window: the avatar stands on a
+/// small spotlit stage on one side, with the day's gear checklist racked up on the other. Only
+/// shown when there's something to display (an avatar, or non-empty gear advice).
+private struct GarageLoadoutSection: View {
     let avatarEnabled: Bool
     let avatarImage: UIImage?
     var avatarAccessories: [AvatarAccessory] = []
@@ -291,36 +293,34 @@ private struct GarageCard: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme, style: .showroom, isTranslucent: true) {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("GARAGE · LOADOUT")
-                        .pixelFont(.title)
-                        .foregroundStyle(theme.accentText(on: .showroom))
-                    Rectangle()
-                        .fill(theme.palette.neon)
-                        .frame(height: 2)
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("GARAGE · LOADOUT")
+                    .pixelFont(.title)
+                    .foregroundStyle(theme.accentText(on: .showroom))
+                Rectangle()
+                    .fill(theme.palette.neon)
+                    .frame(height: 2)
+            }
+
+            ViewThatFits {
+                HStack(alignment: .top, spacing: 16) {
+                    if avatarEnabled {
+                        avatarStage
+                            .frame(maxWidth: adviceEnabled ? 150 : .infinity)
+                    }
+                    if adviceEnabled {
+                        gearCheck
+                    }
                 }
 
-                ViewThatFits {
-                    HStack(alignment: .top, spacing: 16) {
-                        if avatarEnabled {
-                            avatarStage
-                                .frame(maxWidth: adviceEnabled ? 150 : .infinity)
-                        }
-                        if adviceEnabled {
-                            gearCheck
-                        }
+                VStack(alignment: .leading, spacing: 16) {
+                    if avatarEnabled {
+                        avatarStage
+                            .frame(maxWidth: .infinity)
                     }
-
-                    VStack(alignment: .leading, spacing: 16) {
-                        if avatarEnabled {
-                            avatarStage
-                                .frame(maxWidth: .infinity)
-                        }
-                        if adviceEnabled {
-                            gearCheck
-                        }
+                    if adviceEnabled {
+                        gearCheck
                     }
                 }
             }

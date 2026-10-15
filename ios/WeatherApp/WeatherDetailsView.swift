@@ -202,18 +202,7 @@ private struct DailyForecastSection: View {
                             .frame(minWidth: 42, alignment: .leading)
                         PixelSprite(PixelSpriteKind(sfSymbol: day.symbol), scale: 2)
                             .frame(width: 24)
-                        if day.chanceOfRain > 0 {
-                            HStack(spacing: 4) {
-                                PixelSprite(.drop, scale: 1, tint: theme.accentColor)
-                                Text("\(day.chanceOfRain)%")
-                                PixelStatBar(value: Double(day.chanceOfRain) / 100.0, segments: 5, theme: theme)
-                            }
-                            .pixelFont(.caption)
-                            .foregroundStyle(theme.accentColor)
-                        } else {
-                            Text("—")
-                                .foregroundStyle(theme.panelTextColor.opacity(0.55))
-                        }
+                        PixelRainDropGauge(chance: day.chanceOfRain, theme: theme)
                         Spacer()
                         Text(verbatim: day.low)
                             .foregroundStyle(theme.panelTextColor.opacity(0.68))
@@ -228,6 +217,113 @@ private struct DailyForecastSection: View {
                 }
             }
         }
+    }
+}
+
+/// Chance of rain as a chunky pixel raindrop that fills with water from the bottom up, with the
+/// percentage printed inside, like a potion/health flask in a game HUD. Static, so it's Reduce
+/// Motion-safe; the row's accessibility label already speaks the percentage.
+struct PixelRainDropGauge: View {
+    let chance: Int
+    let theme: PixelWeatherTheme
+
+    /// One pixel of the drop, in points.
+    static let cell: CGFloat = 3
+
+    /// The drop's silhouette: `#` cells are inside the drop. Wide rows at the bottom leave room
+    /// for the percentage text.
+    static let mask: [String] = [
+        "....#....",
+        "....#....",
+        "...###...",
+        "...###...",
+        "..#####..",
+        ".#######.",
+        "#########",
+        "#########",
+        "#########",
+        "#########",
+        ".#######.",
+        "..#####..",
+    ]
+
+    static var columns: Int { mask[0].count }
+    static var rows: Int { mask.count }
+
+    /// How many rows (counted from the bottom) are under water. Any non-zero chance shows at
+    /// least one row, and only 100% fills the tip.
+    static func filledRows(chance: Int) -> Int {
+        let clamped = min(max(chance, 0), 100)
+        guard clamped > 0 else { return 0 }
+        if clamped == 100 { return rows }
+        return min(max(Int((Double(clamped) / 100.0 * Double(rows)).rounded()), 1), rows - 1)
+    }
+
+    private static let water = Color(red: 0.22, green: 0.62, blue: 1.0)
+    private static let waterSurface = Color(red: 0.55, green: 0.85, blue: 1.0)
+    private static let outline = Color(red: 0.05, green: 0.04, blue: 0.12)
+
+    private var label: String { "\(min(max(chance, 0), 100))%" }
+
+    var body: some View {
+        let cell = Self.cell
+        let filled = Self.filledRows(chance: chance)
+        let emptyColor = theme.palette.panelShade.opacity(0.85)
+
+        Canvas { context, _ in
+            let mask = Self.mask.map { Array($0) }
+            let isInside: (Int, Int) -> Bool = { row, col in
+                row >= 0 && row < Self.rows && col >= 0 && col < Self.columns && mask[row][col] == "#"
+            }
+            func rect(_ row: Int, _ col: Int) -> CGRect {
+                // Offset by one cell so the outline ring fits inside the canvas.
+                CGRect(x: CGFloat(col + 1) * cell, y: CGFloat(row + 1) * cell, width: cell, height: cell)
+            }
+
+            // Hard one-cell outline around the silhouette.
+            for row in -1...Self.rows {
+                for col in -1...Self.columns where !isInside(row, col) {
+                    let touchesDrop = (-1...1).contains { dr in
+                        (-1...1).contains { dc in isInside(row + dr, col + dc) }
+                    }
+                    if touchesDrop {
+                        context.fill(Path(rect(row, col)), with: .color(Self.outline))
+                    }
+                }
+            }
+
+            let surfaceRow = Self.rows - filled
+            for row in 0..<Self.rows {
+                for col in 0..<Self.columns where isInside(row, col) {
+                    let color: Color
+                    if row < surfaceRow {
+                        color = emptyColor
+                    } else if row == surfaceRow && filled < Self.rows {
+                        color = Self.waterSurface
+                    } else {
+                        color = Self.water
+                    }
+                    context.fill(Path(rect(row, col)), with: .color(color))
+                }
+            }
+
+            // Little glassy shine on the upper-left of the bulb.
+            for (row, col) in [(5, 2), (6, 1), (7, 1)] {
+                context.fill(Path(rect(row, col)), with: .color(.white.opacity(0.75)))
+            }
+        }
+        .frame(width: CGFloat(Self.columns + 2) * cell, height: CGFloat(Self.rows + 2) * cell)
+        .overlay(alignment: .bottom) {
+            Text(label)
+                .font(.custom("PressStart2P-Regular", fixedSize: label.count > 3 ? 6 : 7))
+                .foregroundStyle(.white)
+                .shadow(color: Self.outline, radius: 0, x: 1, y: 1)
+                .lineLimit(1)
+                .fixedSize()
+                // Sit the text in the wide lower rows of the drop.
+                .padding(.bottom, cell * 3.5)
+        }
+        .accessibilityHidden(true)
     }
 }
 
