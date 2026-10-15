@@ -2,6 +2,7 @@ import CoreLocation
 import Foundation
 import Observation
 import UIKit
+import WidgetKit
 
 /// Holds the dashboard state and coordinates local persistence, location access, and weather loading.
 @MainActor
@@ -43,11 +44,17 @@ final class WeatherViewModel {
     private let advisor = ClothingAdvisor()
     private let locationService = LocationService()
     private let avatarStore: AvatarPhotoStore
+    private let widgetStore: WidgetSnapshotStore
     private var service: WeatherService?
 
-    init(prefs: Preferences = Preferences(), avatarStore: AvatarPhotoStore = AvatarPhotoStore()) {
+    init(
+        prefs: Preferences = Preferences(),
+        avatarStore: AvatarPhotoStore = AvatarPhotoStore(),
+        widgetStore: WidgetSnapshotStore = WidgetSnapshotStore()
+    ) {
         self.prefs = prefs
         self.avatarStore = avatarStore
+        self.widgetStore = widgetStore
         units = prefs.defaultUnits
         savedCities = prefs.savedCities
         adviceEnabled = prefs.isAdviceEnabled
@@ -262,7 +269,9 @@ final class WeatherViewModel {
                 snowOneHourMillimeters: weather.snow?.oneHour
             )
             advice = advisor.advice(tempF: tempF, humidity: weather.main.humidity, condition: condition, uvi: uvi)
-            details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, openMeteo: openMeteo, units: units)
+            let details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, openMeteo: openMeteo, units: units)
+            self.details = details
+            publishWidgetSnapshot(weather: weather, description: description, details: details)
 
             let searched = city ?? weather.name
             cityInput = searched
@@ -287,6 +296,29 @@ final class WeatherViewModel {
             advice = []
             details = nil
             currentTemp = nil
+        }
+    }
+
+    /// Hands the widgets their copy of this load (see `WidgetSnapshot`), reloading their
+    /// timelines only when what they'd show actually changed.
+    private func publishWidgetSnapshot(weather: WeatherResponse, description: String, details: WeatherDetailsResult) {
+        let snapshot = WidgetSnapshot(
+            city: weather.name,
+            temp: weather.main.temp,
+            low: details.todayRange?.low,
+            high: details.todayRange?.high,
+            units: units.rawValue,
+            condition: description,
+            theme: weatherTheme.rawValue,
+            isNight: isNight,
+            advice: advice,
+            hourly: details.hourly.prefix(WidgetSnapshot.maxHours).map {
+                WidgetSnapshot.Hour(epoch: $0.id, time: $0.time, symbol: $0.symbol, temp: $0.temp, chanceOfRain: $0.chanceOfRain)
+            },
+            updatedAt: Date()
+        )
+        if widgetStore.save(snapshot) {
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 }

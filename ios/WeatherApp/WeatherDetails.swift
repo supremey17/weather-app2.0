@@ -43,6 +43,7 @@ struct HourlyForecast: Identifiable, Hashable {
     let time: String
     let symbol: String
     let temp: String
+    let chanceOfRain: Int // 0...100
 }
 
 struct DailyForecast: Identifiable, Hashable {
@@ -82,7 +83,8 @@ enum WeatherDetails {
         current.append(DetailItem(symbol: "thermometer.variable", label: "Feels like", value: "\(Int(weather.main.feelsLike.rounded()))\(units.symbol)"))
         // Deliberately not /weather's temp_min/temp_max: that's the spread across the metro area
         // right now, not today's range.
-        if let range = todayRange(currentTemp: weather.main.temp, openMeteo: openMeteo, forecast: forecast, nowEpoch: nowEpoch, timeZone: timeZone) {
+        let range = todayRange(currentTemp: weather.main.temp, openMeteo: openMeteo, forecast: forecast, nowEpoch: nowEpoch, timeZone: timeZone)
+        if let range {
             current.append(DetailItem(symbol: "arrow.up.arrow.down", label: "Low / High", value: "\(Int(range.low.rounded()))° / \(Int(range.high.rounded()))\(units.symbol)"))
         }
         current.append(DetailItem(symbol: "humidity", label: "Humidity", value: "\(weather.main.humidity)%"))
@@ -126,7 +128,8 @@ enum WeatherDetails {
                     id: item.dt,
                     time: timeText(epochSeconds: item.dt, timeZone: timeZone),
                     symbol: symbolName(for: item.weather.first?.main ?? "", epochSeconds: item.dt, timeZone: timeZone),
-                    temp: "\(Int(item.main.temp.rounded()))\(units.symbol)"
+                    temp: "\(Int(item.main.temp.rounded()))\(units.symbol)",
+                    chanceOfRain: Int((item.pop.clamped(to: 0...1) * 100).rounded())
                 )
             }
         }
@@ -138,7 +141,7 @@ enum WeatherDetails {
             daily = forecast.map { dailyForecasts(from: $0, timeZone: timeZone, units: units) } ?? []
         }
 
-        return WeatherDetailsResult(current: current, air: airSummary, hourly: hourly, daily: daily)
+        return WeatherDetailsResult(current: current, air: airSummary, hourly: hourly, daily: daily, todayRange: range)
     }
 
     // MARK: Today's range
@@ -189,7 +192,8 @@ enum WeatherDetails {
                 id: epoch,
                 time: timeText(epochSeconds: epoch, timeZone: timeZone),
                 symbol: symbolName(for: word, isNight: isNight),
-                temp: "\(Int(temp.rounded()))\(units.symbol)"
+                temp: "\(Int(temp.rounded()))\(units.symbol)",
+                chanceOfRain: Int(((hourly.precipitationProbability[safe: index] ?? nil) ?? 0).clamped(to: 0...100).rounded())
             )
         }
     }
@@ -373,6 +377,8 @@ struct WeatherDetailsResult {
     let air: AirQualitySummary?
     let hourly: [HourlyForecast]
     let daily: [DailyForecast]
+    /// Today's low/high in the request's units, if known (see `todayRange`).
+    var todayRange: (low: Double, high: Double)? = nil
 }
 
 private extension Comparable {
