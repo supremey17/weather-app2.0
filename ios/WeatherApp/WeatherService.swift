@@ -78,6 +78,24 @@ struct WeatherService {
         return try await get(url)
     }
 
+    /// True hourly and daily data from Open-Meteo (free, no API key). OWM's free tier only has
+    /// 3-hourly /forecast and no real daily min/max. Goes through the same `RequestGate`, but never
+    /// sends the OWM key: Open-Meteo gets its own URL builder.
+    func openMeteoForecast(lat: Double, lon: Double, units: Units) async throws -> OpenMeteoResponse {
+        let url = makeOpenMeteoURL(query: [
+            "latitude": rounded(lat),
+            "longitude": rounded(lon),
+            "hourly": "temperature_2m,weather_code,precipitation_probability,is_day",
+            "daily": "temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max",
+            "timezone": "auto",
+            // Today plus 6 more, so "5 days from today" is always covered.
+            "forecast_days": "7",
+            "timeformat": "unixtime",
+            "temperature_unit": units == .imperial ? "fahrenheit" : "celsius",
+        ])
+        return try await get(url)
+    }
+
     /// Two decimals is about 1 km, close enough for weather, and lets nearby lookups share a cache entry.
     private func rounded(_ coordinate: Double) -> String {
         String(format: "%.2f", coordinate)
@@ -91,6 +109,17 @@ struct WeatherService {
         // Sorted so the same request always builds the same URL (and the same cache key).
         components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
             + [URLQueryItem(name: "appid", value: apiKey)]
+        return components.url!
+    }
+
+    /// Like `makeURL`, but for Open-Meteo, and deliberately without `appid`: the OWM key must not
+    /// be sent to a third party.
+    private func makeOpenMeteoURL(query: [String: String]) -> URL {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.open-meteo.com"
+        components.path = "/v1/forecast"
+        components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         return components.url!
     }
 

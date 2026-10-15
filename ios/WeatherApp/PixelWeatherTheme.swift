@@ -690,8 +690,8 @@ struct PixelStatBar: View {
 
 // MARK: - Parallax scene
 
-/// Layered pixel hills with a stepped (not tweened) sun/moon and weather particles,
-/// replacing the old flat sky + horizon band.
+/// Layered pixel hills with drifting pixel clouds, a stepped (not tweened) sun/moon, and
+/// lightning strikes in storms, replacing the old flat sky + horizon band.
 struct PixelParallaxScene: View {
     let theme: PixelWeatherTheme
     var animate: Bool = true
@@ -707,6 +707,10 @@ struct PixelParallaxScene: View {
     var body: some View {
         let step = shouldAnimate ? (clock?.step ?? 0) : 0
         let palette = theme.scenePalette(isNight: isNight)
+        // `PixelClock.step` counts 250ms ticks, so this is wall-clock seconds.
+        let strike = theme == .stormy && shouldAnimate
+            ? LightningSchedule.strike(at: Double(step) * 0.25)
+            : nil
         GeometryReader { proxy in
             let width = proxy.size.width
             let height = proxy.size.height
@@ -717,6 +721,12 @@ struct PixelParallaxScene: View {
                     endPoint: .bottom
                 )
 
+                PixelCloudLayer(theme: theme, isNight: isNight, step: step)
+
+                if let strike {
+                    PixelLightningBolt(cycle: strike.cycle, color: palette.neon)
+                }
+
                 PixelHillLayer(color: palette.farHill, heightFraction: 0.34, columns: 9, step: step, speed: 1)
                 PixelHillLayer(color: palette.nearHill, heightFraction: 0.22, columns: 7, step: step, speed: 2)
 
@@ -726,6 +736,10 @@ struct PixelParallaxScene: View {
 
                 PixelSprite(theme.spriteKind, scale: 3)
                     .position(x: width * 0.78, y: height * 0.24)
+
+                if let strike {
+                    Color.white.opacity(strike.elapsed < 0.3 ? 0.3 : 0.08)
+                }
             }
         }
         .clipped()

@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// The single shared "tick" for every stepped pixel-art animation on the main page (the hero
-/// scene, full-page weather particles, animated backgrounds) — replacing what used to be several
+/// scene and animated backgrounds; the full-page weather particles run their own faster timeline) — replacing what used to be several
 /// independent `TimelineView`s. `ContentView` owns one instance, runs it only while something is
 /// actually animating (see `run()`), and injects it via `.environment(clock)`; leaf views read
 /// `clock.step` in their own `body` so only they — not the whole page — re-render on each tick.

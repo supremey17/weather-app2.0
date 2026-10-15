@@ -10,6 +10,13 @@ final class WeatherViewModel {
     var cityInput = ""
     var units: Units
     var resultText = ""
+    /// The current temperature in `units` from the last successful load; `nil` before any load
+    /// and after a failed one. Drives the hero's big temperature readout.
+    var currentTemp: Double?
+    /// The units `currentTemp` was fetched in (can briefly differ from `units` mid-reload).
+    var currentTempUnits: Units = .imperial
+    /// A one-off problem (avatar save, location) to show under the big temperature, which hides `resultText`.
+    var notice = ""
     var advice: [String] = []
     var details: WeatherDetailsResult?
     var isLoading = false
@@ -71,12 +78,14 @@ final class WeatherViewModel {
         avatarFaceAnchors = anchors
         guard let data = processed.pngData() else {
             resultText = "Your avatar could not be saved. Please try another photo."
+            notice = resultText
             return
         }
         do {
             try avatarStore.save(data)
         } catch {
             resultText = "Your avatar could not be saved. Please try another photo."
+            notice = resultText
             return
         }
         if let anchors {
@@ -131,6 +140,7 @@ final class WeatherViewModel {
             coordinate = try await locationService.currentLocation().coordinate
         } catch {
             resultText = "Location is unavailable. Search for a city instead."
+            notice = resultText
             return
         }
         await load(city: nil) {
@@ -223,15 +233,21 @@ final class WeatherViewModel {
             async let uviResult = service.uvIndex(lat: weather.coord.lat, lon: weather.coord.lon)
             async let airResult = service.airQuality(lat: weather.coord.lat, lon: weather.coord.lon)
             async let forecastResult = service.forecast(lat: weather.coord.lat, lon: weather.coord.lon, units: units)
+            async let openMeteoResult = service.openMeteoForecast(lat: weather.coord.lat, lon: weather.coord.lon, units: units)
             let uvi = (try? await uviResult) ?? 0
             let air = (try? await airResult) ?? nil
             let forecast = (try? await forecastResult) ?? nil
+            // Optional: if Open-Meteo fails, WeatherDetails falls back to the OWM 3-hour forecast.
+            let openMeteo = (try? await openMeteoResult) ?? nil
 
             let condition = weather.weather.first?.main ?? ""
             let description = weather.weather.first?.description ?? ""
             let tempF = units == .metric ? weather.main.temp * 9 / 5 + 32 : weather.main.temp
 
-            resultText = "\(weather.name): \(weather.main.temp)\(units.symbol), \(description)"
+            currentTemp = weather.main.temp
+            currentTempUnits = units
+            notice = ""
+            resultText = "\(weather.name): \(Int(weather.main.temp.rounded()))\(units.symbol), \(description)"
             conditionTitle = description.isEmpty ? "Weather briefing" : description
             weatherTheme = PixelWeatherTheme.make(
                 condition: condition,
@@ -246,7 +262,7 @@ final class WeatherViewModel {
                 snowOneHourMillimeters: weather.snow?.oneHour
             )
             advice = advisor.advice(tempF: tempF, humidity: weather.main.humidity, condition: condition, uvi: uvi)
-            details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, units: units)
+            details = WeatherDetails.build(weather: weather, uvi: uvi, air: air, forecast: forecast, openMeteo: openMeteo, units: units)
 
             let searched = city ?? weather.name
             cityInput = searched
@@ -255,18 +271,22 @@ final class WeatherViewModel {
             resultText = "We couldn't find \(name). Check the spelling and try again."
             advice = []
             details = nil
+            currentTemp = nil
         } catch WeatherError.rateLimited {
             resultText = "Weather requests are temporarily limited. Try again in a minute."
             advice = []
             details = nil
+            currentTemp = nil
         } catch is CancellationError {
             resultText = "Weather loading was cancelled. Please try again."
             advice = []
             details = nil
+            currentTemp = nil
         } catch {
             resultText = "Weather is unavailable right now. Please try again."
             advice = []
             details = nil
+            currentTemp = nil
         }
     }
 }
