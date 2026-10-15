@@ -1,17 +1,17 @@
-# Graph Report - weather-app2.0  (2026-10-14)
+# Graph Report - weather-app2.0  (2026-10-15)
 
 ## Corpus Check
-- 106 files · ~184,842 words
+- 123 files · ~194,949 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 9 file(s) not represented in the graph (top: .ttf 3, (none) 2, .xcconfig 1)
+- Unclassified: 13 file(s) not represented in the graph (top: (none) 3, .ttf 3, .plist 2)
 
 ## Summary
-- 996 nodes · 2203 edges · 49 communities (30 shown, 19 thin omitted)
-- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 249 edges (avg confidence: 0.84)
+- 1295 nodes · 2985 edges · 70 communities (46 shown, 24 thin omitted)
+- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 328 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8738c66a`
+- Built from commit: `ae04dfd0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -33,23 +33,23 @@
 - PixelBackgroundTests
 - PreferencesService
 - WeatherViewModel
-- Avatar accessories (scaffold)
+- Detection
 - PixelWeatherTheme
 - PixelGrid
-- .textColor
+- .body
 - PixelPanel
 - AvatarPhotoStore
-- Role
-- AvatarImageProcessing
+- PixelTemperatureReadout
+- .setAvatarPhoto
 - AvatarAccessory
 - PixelWeatherTheme.swift
 - CodingKeys
 - com.fasterxml.jackson.annotation.JsonIgnoreProperties
 - .make
 - .isForeground
-- WeatherDetailsTests
+- .build
 - AvatarPhotoPickerView
-- DetailItem
+- PixelCloudLayer
 - .makeModel
 - .makeModel
 - list
@@ -57,137 +57,159 @@
 - AirSample
 - .draw
 - AvatarView.java
-- AvatarImageProcessingTests
+- .targetSize
 - PixelSpriteKindSFSymbolMappingTests
-- .removeSavedCities
-- AccessorySlotRow
+- .visibleHours
+- AccessorySlot
 - AvatarPhotoStoreTests
-- WeatherApp
+- WeatherService
+- WidgetSnapshot
+- SnapshotEntry
+- FaceAnchors
+- PixelRainDropGauge
+- LoadoutWidget
+- .textColor
+- .hud
+- .rectangular
+- ForecastItem
+- PlayerHUDWidgetTests
+- .point
+- Weather Journey
+- PixelPanelStyle
+- WidgetSnapshotTests
+- Avatar accessories (scaffold)
+- .make
+- WeatherError
+- String
+- WidgetTimeline.swift
+- AvatarBackgroundRemoval.swift
+- Kind
+- WidgetSnapshotStore
 
 ## God Nodes (most connected - your core abstractions)
-1. `PixelWeatherTheme` - 68 edges
-2. `PixelSpriteKind` - 64 edges
-3. `WeatherViewModel` - 45 edges
-4. `PixelPanel` - 27 edges
-5. `PixelGrid` - 26 edges
-6. `RequestGate` - 25 edges
-7. `Preferences` - 24 edges
-8. `AvatarAccessory` - 22 edges
-9. `PixelBackground` - 22 edges
-10. `CodingKeys` - 22 edges
+1. `PixelWeatherTheme` - 77 edges
+2. `PixelSpriteKind` - 69 edges
+3. `WeatherViewModel` - 47 edges
+4. `WidgetSnapshot` - 38 edges
+5. `CodingKeys` - 37 edges
+6. `Units` - 30 edges
+7. `PixelPanel` - 28 edges
+8. `WeatherDetailsTests` - 28 edges
+9. `PixelGrid` - 26 edges
+10. `WeatherParticleConfig` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Coordinate mapping` --references--> `AvatarAccessoryGeometry`  [INFERRED]
   ios/docs/avatar-accessories.md → ios/WeatherApp/AvatarView.swift
-- `Search autocomplete` --references--> `RequestGate`  [INFERRED]
-  ios/README.md → ios/WeatherApp/RequestGate.swift
 - `Persistence` --references--> `AvatarPhotoStore`  [INFERRED]
   ios/docs/avatar-accessories.md → ios/WeatherApp/AvatarPhotoStore.swift
 - `Detection` --references--> `BodyPoseDetector`  [INFERRED]
   ios/docs/avatar-accessories.md → ios/WeatherApp/BodyPoseDetector.swift
-- `.body` --calls--> `ContentView`  [INFERRED]
-  ios/WeatherApp/WeatherApp.swift → ios/WeatherApp/ContentView.swift
+- `Detection` --references--> `FaceAnchorDetector`  [INFERRED]
+  ios/docs/avatar-accessories.md → ios/WeatherApp/FaceAnchorDetector.swift
+- `Open questions` --references--> `FaceAnchorDetector`  [INFERRED]
+  ios/docs/avatar-accessories.md → ios/WeatherApp/FaceAnchorDetector.swift
 
 ## Import Cycles
 - None detected.
 
-## Communities (49 total, 19 thin omitted)
+## Communities (70 total, 24 thin omitted)
 
 ### Community 0 - "App.java"
 Cohesion: 0.12
 Nodes (3): App, SettingsWindow, CityNotFoundException
 
 ### Community 1 - "Preferences"
-Cohesion: 0.18
-Nodes (8): Preferences, .defaultUnits, .homeCity, .isAccessoriesEnabled, .isAdviceEnabled, .isAvatarEnabled, .lastCity, .selectedBackground
+Cohesion: 0.13
+Nodes (9): Preferences, .defaultUnits, .homeCity, .isAccessoriesEnabled, .isAdviceEnabled, .isAvatarEnabled, .lastCity, .savedCities (+1 more)
 
 ### Community 2 - "CitySuggester"
 Cohesion: 0.06
-Nodes (13): CityCompleting, CitySuggester, CitySuggestion, .id, CitySuggestionLogic, MapKitCityCompleter, ContentView, .ambientClockActive (+5 more)
+Nodes (14): CityCompleting, CitySuggester, CitySuggestion, .id, CitySuggestionLogic, MapKitCityCompleter, ContentView, .ambientClockActive (+6 more)
 
 ### Community 3 - "PixelBackground"
 Cohesion: 0.17
 Nodes (11): PixelBackground, .assetName, beach, cherryBlossom, .displayName, .id, mountains, ocean (+3 more)
 
 ### Community 4 - "WeatherModels.swift"
-Cohesion: 0.22
-Nodes (14): Clouds, Coord, CurrentBlock, ForecastCity, ForecastItem, ForecastMain, ForecastResponse, MainInfo (+6 more)
+Cohesion: 0.19
+Nodes (13): AirPollutionResponse, Clouds, Coord, CurrentBlock, MainInfo, OneCallResponse, OpenMeteoDaily, OpenMeteoHourly (+5 more)
 
 ### Community 5 - "WeatherAPI.java"
 Cohesion: 0.20
 Nodes (3): IpLocation, LocationService, WeatherAPI
 
 ### Community 6 - "Units"
-Cohesion: 0.20
-Nodes (8): WeatherDetails, Units, .id, imperial, .label, metric, .symbol, .toggled
+Cohesion: 0.12
+Nodes (14): Array, Comparable, DailyForecast, DetailItem, .id, HourlyForecast, WeatherDetails, Units (+6 more)
 
 ### Community 7 - "RequestGate"
-Cohesion: 0.07
-Nodes (20): API usage limits, Avatar photo, Full weather details, Java to Swift map, Run it, Search autocomplete, Tests, Weather App (iOS) (+12 more)
+Cohesion: 0.15
+Nodes (6): RequestGate, FetchCounter, .count, RequestGateTests, TestClock, .now
 
 ### Community 8 - "PixelSpriteKind"
 Cohesion: 0.04
 Nodes (48): PixelSpriteKind, accessoryBeanie, accessoryCap, accessoryCigarette, accessoryLollipop, accessoryMonocle, accessoryPartyHat, accessoryPipe (+40 more)
 
 ### Community 9 - "Foundation"
-Cohesion: 0.06
-Nodes (15): CoreGraphics, CoreImage, CoreImage.CIFilterBuiltins, Foundation, ClothingAdvisor, contrastRatio(), PixelSpriteKindGridTests, PixelWeatherThemeContrastTests (+7 more)
+Cohesion: 0.05
+Nodes (16): CoreGraphics, Foundation, ClothingAdvisor, contrastRatio(), PixelSpriteKindGridTests, PixelWeatherThemeContrastTests, PixelWeatherThemeNightModifierTests, relativeLuminance() (+8 more)
 
 ### Community 10 - "LocationService"
 Cohesion: 0.21
 Nodes (4): CoreLocation, LocationError, denied, LocationService
 
 ### Community 11 - "View"
-Cohesion: 0.15
-Nodes (18): PixelSprite, AirQualitySection, .aqiLevel, .aqiNormalizedLevel, .body, .pollutants, CurrentMetricsSection, .body (+10 more)
+Cohesion: 0.13
+Nodes (22): PixelSprite, SavedCitiesView, .body, AirQualitySection, .aqiLevel, .aqiNormalizedLevel, .body, .pollutants (+14 more)
 
 ### Community 14 - "BodyPoseLandmarks"
 Cohesion: 0.27
 Nodes (3): BodyPoseLandmarks, PoseGuidance, PoseGuidanceTests
 
 ### Community 17 - "WeatherViewModel"
-Cohesion: 0.11
-Nodes (18): .body, PixelSearchBar, .body, SavedCitiesView, .body, BackdropRow, PixelToggleStyle, SettingsSectionTitle (+10 more)
+Cohesion: 0.21
+Nodes (5): WeatherViewModel, .defaultUnits, .hasAvatarPhoto, .homeCity, .isCurrentCitySaved
 
-### Community 18 - "Avatar accessories (scaffold)"
-Cohesion: 0.12
-Nodes (11): Art spec, Avatar accessories (scaffold), Default silhouette, Detection, Goal & privacy boundary, Open questions, Slots, Still to build (+3 more)
+### Community 18 - "Detection"
+Cohesion: 0.20
+Nodes (5): Detection, Open questions, BodyPoseDetector, FaceAnchorDetector, Vision
 
 ### Community 19 - "PixelWeatherTheme"
-Cohesion: 0.10
-Nodes (24): .body, PixelSuggestionMenu, .body, PixelPalette, PixelWeatherTheme, .accentColor, .appliesNightModifier, clearDay (+16 more)
+Cohesion: 0.12
+Nodes (21): PixelPalette, PixelWeatherTheme, .accentColor, .appliesNightModifier, clearDay, clearNight, cloudy, .horizonColor (+13 more)
 
 ### Community 20 - "PixelGrid"
 Cohesion: 0.17
 Nodes (9): Color, PixelBackgroundLayer, .base, .body, .weatherWash, PixelGrid, PixelSceneCanvas, .body (+1 more)
 
-### Community 21 - ".textColor"
-Cohesion: 0.13
-Nodes (11): GarageCard, .avatarStage, .body, .gearCheck, WeatherHero, .foreground, .fill, PixelStatBar (+3 more)
+### Community 21 - ".body"
+Cohesion: 0.17
+Nodes (9): .body, GarageLoadoutSection, .avatarStage, .body, .gearCheck, WeatherHero, .body, .textColor (+1 more)
 
 ### Community 22 - "PixelPanel"
-Cohesion: 0.13
-Nodes (10): PixelBevelShape, PixelPanel, .body, .borderColor, PixelPanelStyle, hud, showroom, standard (+2 more)
+Cohesion: 0.10
+Nodes (12): .body, PixelSearchBar, .body, .searchField, .theme, PixelSuggestionMenu, .body, PixelBevelShape (+4 more)
 
 ### Community 23 - "AvatarPhotoStore"
-Cohesion: 0.18
+Cohesion: 0.19
 Nodes (3): Persistence, AvatarPhotoStore, .exists
 
-### Community 24 - "Role"
-Cohesion: 0.20
-Nodes (9): PixelFont, Role, body, caption, display, headline, label, number (+1 more)
+### Community 24 - "PixelTemperatureReadout"
+Cohesion: 0.06
+Nodes (26): PixelTemperatureReadout, .body, .colors, .readout, TemperatureBand, cold, .colors, freezing (+18 more)
 
 ### Community 26 - "AvatarAccessory"
-Cohesion: 0.06
-Nodes (19): Coordinate mapping, AccessorySlot, eyes, head, mouth, AvatarAccessory, .sprite, AvatarAccessoryGeometry (+11 more)
+Cohesion: 0.14
+Nodes (3): AvatarAccessory, .sprite, AvatarAccessoryTests
 
 ### Community 27 - "PixelWeatherTheme.swift"
-Cohesion: 0.16
-Nodes (15): Color, Kind, icon, primary, secondary, PixelButtonStyle, .background, PixelHillLayer (+7 more)
+Cohesion: 0.19
+Nodes (15): Color, PixelButtonStyle, .background, PixelHillLayer, .body, PixelIconButtonStyle, .fill, PixelParallaxScene (+7 more)
 
 ### Community 28 - "CodingKeys"
-Cohesion: 0.11
-Nodes (17): CodingKeys, co, feelsLike, grndLevel, humidity, no2, o3, oneHour (+9 more)
+Cohesion: 0.07
+Nodes (29): CodingKeys, co, daily, feelsLike, grndLevel, hourly, humidity, isDay (+21 more)
 
 ### Community 29 - "com.fasterxml.jackson.annotation.JsonIgnoreProperties"
 Cohesion: 0.25
@@ -195,43 +217,107 @@ Nodes (6): Coord, CurrentBlock, MainInfo, OneCallResponse, WeatherInfo, WeatherR
 
 ### Community 33 - "AvatarPhotoPickerView"
 Cohesion: 0.20
-Nodes (5): AvatarPhotoPickerView, .body, .preview, .statusMessage, PhotosUI
+Nodes (4): AvatarPhotoPickerView, .preview, .statusMessage, PhotosUI
 
-### Community 34 - "DetailItem"
-Cohesion: 0.27
-Nodes (6): Comparable, DailyForecast, DetailItem, .id, HourlyForecast, WeatherDetailsResult
+### Community 34 - "PixelCloudLayer"
+Cohesion: 0.11
+Nodes (12): Bolt, LightningSchedule, PixelCloudLayer, .body, .colors, PixelLightningBolt, .body, PixelSnowCap (+4 more)
 
 ### Community 38 - "WeatherParticleConfig"
-Cohesion: 0.07
-Nodes (22): PrecipitationIntensity, heavy, light, normal, EnvironmentValues, .weatherColliderStore, Kind, rain (+14 more)
+Cohesion: 0.06
+Nodes (25): PrecipitationIntensity, heavy, light, normal, EnvironmentValues, .weatherColliderStore, .weatherSnowCover, Kind (+17 more)
 
 ### Community 39 - "AirSample"
-Cohesion: 0.39
-Nodes (5): AirQualitySummary, AirComponents, AirMain, AirPollutionResponse, AirSample
+Cohesion: 0.57
+Nodes (4): AirQualitySummary, AirComponents, AirMain, AirSample
 
-### Community 45 - "AccessorySlotRow"
-Cohesion: 0.38
-Nodes (5): AccessorySlotRow, .body, .currentID, .currentName, .slotName
+### Community 44 - ".visibleHours"
+Cohesion: 0.19
+Nodes (5): QuestLogView, .body, QuestLogWidget, .body, QuestLogWidgetTests
+
+### Community 45 - "AccessorySlot"
+Cohesion: 0.19
+Nodes (12): AccessorySlot, eyes, head, mouth, AccessorySlotRow, .body, .currentID, .currentName (+4 more)
+
+### Community 48 - "WidgetSnapshot"
+Cohesion: 0.21
+Nodes (4): Hour, WidgetSnapshot, .unitsValue, .weatherTheme
+
+### Community 49 - "SnapshotEntry"
+Cohesion: 0.20
+Nodes (3): .body, SnapshotEntry, SnapshotProvider
+
+### Community 50 - "FaceAnchors"
+Cohesion: 0.17
+Nodes (7): AvatarView, .accessoryOverlay, .avatarImage, .body, .resolvedAnchors, .underlyingImageSize, FaceAnchors
+
+### Community 51 - "PixelRainDropGauge"
+Cohesion: 0.21
+Nodes (6): PixelRainDropGauge, .body, .columns, .label, .rows, PixelRainDropGaugeTests
+
+### Community 52 - "LoadoutWidget"
+Cohesion: 0.26
+Nodes (3): Item, LoadoutWidget, LoadoutWidgetTests
+
+### Community 53 - ".textColor"
+Cohesion: 0.21
+Nodes (8): .foreground, .panelTextColor, BackdropRow, .body, PixelToggleStyle, SettingsSectionTitle, .body, .body
+
+### Community 54 - ".hud"
+Cohesion: 0.19
+Nodes (4): HUDTemperature, PlayerHUDView, PlayerHUDWidget, .body
+
+### Community 55 - ".rectangular"
+Cohesion: 0.27
+Nodes (4): LockScreenGaugesView, .body, LockScreenGaugesWidget, .body
+
+### Community 56 - "ForecastItem"
+Cohesion: 0.62
+Nodes (5): ForecastCity, ForecastItem, ForecastMain, ForecastResponse, WeatherInfo
+
+### Community 59 - "Weather Journey"
+Cohesion: 0.20
+Nodes (9): How it's built, Java → Swift map, Run it, Search autocomplete, Tests, The avatar, in more detail, Weather Journey, What it does (+1 more)
+
+### Community 60 - "PixelPanelStyle"
+Cohesion: 0.22
+Nodes (7): PixelPanelStyle, hud, showroom, standard, wood, QuestTile, .body
+
+### Community 62 - "Avatar accessories (scaffold)"
+Cohesion: 0.29
+Nodes (6): Art spec, Avatar accessories (scaffold), Default silhouette, Goal & privacy boundary, Slots, Still to build
+
+### Community 64 - "WeatherError"
+Cohesion: 0.29
+Nodes (5): WeatherError, badStatus, cityNotFound, missingAPIKey, rateLimited
+
+### Community 66 - "WidgetTimeline.swift"
+Cohesion: 0.40
+Nodes (4): .body, PressStartView, .body, View
+
+### Community 68 - "Kind"
+Cohesion: 0.50
+Nodes (4): Kind, icon, primary, secondary
 
 ## Knowledge Gaps
-- **168 isolated node(s):** `head`, `eyes`, `mouth`, `.sprite`, `PhotosUI` (+163 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 305 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **19 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **199 isolated node(s):** `head`, `eyes`, `mouth`, `.sprite`, `PhotosUI` (+194 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 372 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **24 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `WeatherViewModel` connect `WeatherViewModel` to `AvatarPhotoPickerView`, `CitySuggester`, `PixelBackground`, `Preferences`, `DetailItem`, `WeatherParticleConfig`, `Units`, `RequestGate`, `Foundation`, `LocationService`, `.makeModel`, `.removeSavedCities`, `.makeModel`, `PixelBackgroundTests`, `PixelWeatherTheme`, `AvatarPhotoStore`, `AvatarAccessory`?**
-  _High betweenness centrality (0.343) - this node is a cross-community bridge._
-- **Why does `PixelWeatherTheme` connect `PixelWeatherTheme` to `WeatherParticleConfig`, `PixelSpriteKind`, `View`, `AccessorySlotRow`, `WeatherViewModel`, `PixelGrid`, `.textColor`, `PixelPanel`, `AvatarAccessory`, `PixelWeatherTheme.swift`?**
-  _High betweenness centrality (0.191) - this node is a cross-community bridge._
-- **Why does `WeatherApp` connect `WeatherApp` to `App.java`?**
-  _High betweenness centrality (0.184) - this node is a cross-community bridge._
+- **Why does `WeatherViewModel` connect `WeatherViewModel` to `Preferences`, `CitySuggester`, `PixelBackground`, `Units`, `Foundation`, `LocationService`, `View`, `PixelBackgroundTests`, `PixelWeatherTheme`, `.body`, `PixelPanel`, `AvatarPhotoStore`, `.setAvatarPhoto`, `AvatarAccessory`, `.build`, `AvatarPhotoPickerView`, `.makeModel`, `.makeModel`, `WeatherParticleConfig`, `AccessorySlot`, `WeatherService`, `FaceAnchors`, `.textColor`, `String`, `WidgetSnapshotStore`?**
+  _High betweenness centrality (0.285) - this node is a cross-community bridge._
+- **Why does `PixelWeatherTheme` connect `PixelWeatherTheme` to `String`, `PixelCloudLayer`, `WidgetTimeline.swift`, `WeatherParticleConfig`, `PixelSpriteKind`, `View`, `AccessorySlot`, `WidgetSnapshot`, `WeatherViewModel`, `PixelRainDropGauge`, `PixelGrid`, `.body`, `PixelPanel`, `.textColor`, `PixelWeatherTheme.swift`, `PixelPanelStyle`, `.make`?**
+  _High betweenness centrality (0.166) - this node is a cross-community bridge._
+- **Why does `Units` connect `Units` to `.build`, `Preferences`, `WeatherModels.swift`, `AccessorySlot`, `WeatherService`, `WidgetSnapshot`, `WeatherViewModel`, `.body`, `.hud`, `PixelTemperatureReadout`?**
+  _High betweenness centrality (0.158) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `PixelWeatherTheme` (e.g. with `.body` and `.makeBody()`) actually correct?**
   _`PixelWeatherTheme` has 5 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 7 inferred relationships involving `PixelSpriteKind` (e.g. with `.body` and `.body`) actually correct?**
-  _`PixelSpriteKind` has 7 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 7 inferred relationships involving `WeatherViewModel` (e.g. with `ContentView` and `.body`) actually correct?**
-  _`WeatherViewModel` has 7 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 15 inferred relationships involving `PixelPanel` (e.g. with `.body` and `.body`) actually correct?**
-  _`PixelPanel` has 15 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 9 inferred relationships involving `PixelSpriteKind` (e.g. with `.body` and `.body`) actually correct?**
+  _`PixelSpriteKind` has 9 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 6 inferred relationships involving `WeatherViewModel` (e.g. with `ContentView` and `.body`) actually correct?**
+  _`WeatherViewModel` has 6 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 2 inferred relationships involving `WidgetSnapshot` (e.g. with `.publishWidgetSnapshot()` and `.timelineHasAnEntryForNowEachFutureHourAndStaleness()`) actually correct?**
+  _`WidgetSnapshot` has 2 INFERRED edges - model-reasoned connections that need verification._

@@ -14,7 +14,7 @@ struct ClothingAdvisor {
             advice.append("Very Hot")
         }
 
-        if humidity > 70 {
+        if humidity > 75 {
             advice.append("Humid: Wear some Linen or lightweight cotton to keep cool")
         }
         if isRain(condition) {
