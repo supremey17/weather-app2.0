@@ -37,7 +37,7 @@ struct ContentView: View {
                 )
 
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: PixelSpacing.lg) {
                         PixelSearchBar(
                             model: model,
                             suggester: suggester,
@@ -95,7 +95,8 @@ struct ContentView: View {
                             .weatherCollider("ready")
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, PixelSpacing.md)
+                    .padding(.vertical, PixelSpacing.lg)
                     .coordinateSpace(.named("weatherContent"))
                     .onGeometryChange(for: CGFloat.self) { proxy in
                         proxy.frame(in: .named("weatherPage")).minY
@@ -204,14 +205,14 @@ private struct WeatherHero: View {
         // One see-through window over the page backdrop: no separate sky/hills/ground scene,
         // since the full-page background already provides it.
         PixelPanel(theme: theme, style: .showroom, isTranslucent: true) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                 Text(city.isEmpty ? "NEW ROUTE" : city)
                     .pixelFont(.display)
                     .foregroundStyle(textColor.opacity(0.86))
 
                 if let currentTemp {
                     // Big arcade-style hero number, with the condition sprite riding alongside.
-                    HStack(alignment: .center, spacing: 12) {
+                    HStack(alignment: .center, spacing: PixelSpacing.md) {
                         PixelTemperatureReadout(temp: currentTemp, units: units, isNight: isNight)
                             .layoutPriority(1)
                         Spacer(minLength: 0)
@@ -233,7 +234,7 @@ private struct WeatherHero: View {
                     HStack(alignment: .bottom, spacing: 16) {
                         PixelSprite(theme.spriteKind, scale: 4)
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: PixelSpacing.sm) {
                             Text(conditionTitle)
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(textColor)
@@ -269,8 +270,8 @@ private struct WeatherHero: View {
                 }
 
                 if let loadout {
+                    PixelGroove()
                     loadout
-                        .padding(.top, 6)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -293,8 +294,8 @@ private struct GarageLoadoutSection: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: PixelSpacing.md) {
+            VStack(alignment: .leading, spacing: PixelSpacing.sm) {
                 Text("GARAGE · LOADOUT")
                     .pixelFont(.title)
                     .foregroundStyle(theme.accentText(on: .showroom))
@@ -328,7 +329,7 @@ private struct GarageLoadoutSection: View {
     }
 
     private var avatarStage: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: PixelSpacing.sm) {
             ZStack(alignment: .bottom) {
                 HStack {
                     Rectangle()
@@ -345,17 +346,17 @@ private struct GarageLoadoutSection: View {
                 VStack(spacing: 0) {
                     Rectangle()
                         .fill(theme.palette.panelShade)
-                        .frame(width: 140, height: 10)
+                        .frame(width: 144, height: 8)
                     Rectangle()
                         .fill(theme.palette.hud)
-                        .frame(width: 100, height: 6)
+                        .frame(width: 104, height: 8)
                 }
                 .accessibilityHidden(true)
 
                 Button(action: onAvatarTap) {
                     AvatarView(
                         image: avatarImage,
-                        size: CGSize(width: 130, height: 190),
+                        size: CGSize(width: 128, height: 192),
                         accessories: avatarAccessories,
                         anchors: avatarAnchors
                     )
@@ -371,8 +372,8 @@ private struct GarageLoadoutSection: View {
     }
 
     private var gearCheck: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: PixelSpacing.md) {
+            HStack(spacing: PixelSpacing.sm) {
                 PixelSprite(.backpack, scale: 2, tint: theme.accentColor)
                 Text("GEAR CHECK")
                     .pixelFont(.label)
@@ -385,13 +386,8 @@ private struct GarageLoadoutSection: View {
                     .foregroundStyle(theme.textColor(on: .showroom).opacity(0.85))
             } else {
                 ForEach(advice, id: \.self) { item in
-                    HStack(spacing: 10) {
-                        PixelBevelShape(notch: 2)
-                            .fill(theme.palette.hud)
-                            .frame(width: 20, height: 20)
-                            .overlay {
-                                PixelSprite(.check, scale: 1, tint: theme.accentColor)
-                            }
+                    HStack(spacing: PixelSpacing.sm) {
+                        PixelSprite(.check, scale: 1.5, tint: theme.accentColor)
 
                         Text(item)
                             .pixelFont(.body)

@@ -19,9 +19,9 @@ struct AvatarPhotoPickerView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: PixelSpacing.lg) {
                         PixelPanel(theme: model.weatherTheme) {
-                            VStack(spacing: 16) {
+                            VStack(spacing: PixelSpacing.md) {
                                 preview
 
                                 PhotosPicker("Choose Photo", selection: $pickerItem, matching: .images)
@@ -52,7 +52,8 @@ struct AvatarPhotoPickerView: View {
                             .buttonStyle(.bordered)
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, PixelSpacing.md)
+                    .padding(.vertical, PixelSpacing.lg)
                 }
             }
             .navigationTitle("Avatar Photo")

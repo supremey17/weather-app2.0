@@ -13,7 +13,7 @@ struct SavedCitiesView: View {
                 ScrollView {
                     if model.savedCities.isEmpty {
                         PixelPanel(theme: model.weatherTheme, style: .wood) {
-                            VStack(spacing: 10) {
+                            VStack(spacing: PixelSpacing.md) {
                                 PixelSprite(.star, scale: 4, tint: model.weatherTheme.accentColor)
                                 Text("No saved cities")
                                     .pixelFont(.headline)
@@ -22,12 +22,13 @@ struct SavedCitiesView: View {
                                     .multilineTextAlignment(.center)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, PixelSpacing.sm)
                             .foregroundStyle(model.weatherTheme.textColor(on: .wood))
                         }
-                        .padding()
+                        .padding(.horizontal, PixelSpacing.md)
+                        .padding(.vertical, PixelSpacing.lg)
                     } else {
-                        LazyVStack(spacing: 10) {
+                        LazyVStack(spacing: PixelSpacing.md) {
                             ForEach(model.savedCities, id: \.self) { city in
                                 PixelPanel(theme: model.weatherTheme, style: .wood) {
                                     HStack {
@@ -35,7 +36,7 @@ struct SavedCitiesView: View {
                                             Task { await model.search(city: city) }
                                             dismiss()
                                         } label: {
-                                            HStack {
+                                            HStack(spacing: PixelSpacing.sm) {
                                                 PixelSprite(.flag, scale: 2, tint: model.weatherTheme.accentColor)
                                                 Text(city)
                                                     .pixelFont(.body)
@@ -58,7 +59,8 @@ struct SavedCitiesView: View {
                                 }
                             }
                         }
-                        .padding()
+                        .padding(.horizontal, PixelSpacing.md)
+                        .padding(.vertical, PixelSpacing.lg)
                     }
                 }
             }

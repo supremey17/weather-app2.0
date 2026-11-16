@@ -13,8 +13,8 @@ struct PixelSearchBar: View {
     private var theme: PixelWeatherTheme { model.weatherTheme }
 
     var body: some View {
-        PixelPanel(theme: theme, style: .hud, padding: 8, isTranslucent: true) {
-            HStack(spacing: 8) {
+        PixelPanel(theme: theme, style: .hud, padding: PixelSpacing.sm, isTranslucent: true) {
+            HStack(spacing: PixelSpacing.sm) {
                 searchField
 
                 Button(model.units.symbol) {
@@ -27,8 +27,8 @@ struct PixelSearchBar: View {
         }
         .overlay {
             if isFocused.wrappedValue {
-                PixelBevelShape()
-                    .stroke(theme.palette.neon, lineWidth: 2)
+                RoundedRectangle(cornerRadius: PixelSpacing.sm, style: .continuous)
+                    .strokeBorder(theme.palette.neon, lineWidth: 2)
             }
         }
     }
@@ -37,7 +37,7 @@ struct PixelSearchBar: View {
     /// padding around the text focuses the field, just like tapping the text itself. (The inline
     /// clear button is a child `Button`, so its tap wins over this container's tap gesture.)
     private var searchField: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: PixelSpacing.sm) {
             PixelSprite(.search, scale: 1, tint: theme.accentText(on: .hud))
                 .opacity(0.8)
 
@@ -71,27 +71,19 @@ struct PixelSearchBar: View {
                 } label: {
                     PixelSprite(.close, scale: 1)
                         .opacity(0.7)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear city")
             }
         }
-        .padding(.leading, 10)
-        .padding(.trailing, model.cityInput.isEmpty ? 10 : 4)
-        .frame(maxWidth: .infinity, minHeight: 38, alignment: .leading)
-        .background {
-            // Sunken text box, like the name-entry fields of old game menus: a slightly darker
-            // well with a thin dark rim, sitting inside the lighter HUD panel.
-            PixelBevelShape(notch: 3)
-                .fill(Color.black.opacity(0.14))
-        }
-        .overlay {
-            PixelBevelShape(notch: 3)
-                .stroke(Color.black.opacity(0.3), lineWidth: 1)
-        }
-        .contentShape(PixelBevelShape(notch: 3))
+        .padding(.leading, PixelSpacing.sm)
+        .padding(.trailing, model.cityInput.isEmpty ? PixelSpacing.sm : 0)
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+        // Sunken text well, recessed into the lighter HUD panel around it.
+        .pixelWell(fill: Color.black.opacity(0.14), cornerRadius: 6)
+        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .onTapGesture {
             isFocused.wrappedValue = true
         }
@@ -111,15 +103,13 @@ struct PixelSuggestionMenu: View {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
                     if index > 0 {
-                        Rectangle()
-                            .fill(theme.palette.panelShade)
-                            .frame(height: 1)
+                        PixelGroove()
                     }
 
                     Button {
                         onSelect(suggestion)
                     } label: {
-                        HStack(alignment: .top, spacing: 8) {
+                        HStack(alignment: .top, spacing: PixelSpacing.sm) {
                             Text("▶")
                                 .pixelFont(.caption)
                                 .foregroundStyle(theme.accentText(on: .standard))

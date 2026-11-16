@@ -218,8 +218,8 @@ struct PixelSnowCap: View {
     static let cell: CGFloat = 3
     /// How far the cap overlaps the panel's top border, so it reads as resting on it.
     static let overlap: CGFloat = 2
-    /// Matches `PixelBevelShape`'s default notch, so the cap doesn't hang off the cut corners.
-    static let cornerInset: CGFloat = 4
+    /// Matches `PixelPanel`'s card corner radius, so the cap doesn't hang off the rounded corners.
+    static let cornerInset: CGFloat = 16
 
     static func baseRows(for intensity: PrecipitationIntensity) -> Int {
         switch intensity {
