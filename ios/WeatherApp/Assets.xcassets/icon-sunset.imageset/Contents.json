@@ -1,12 +1,15 @@
 {
-  "images" : [
+  "images": [
     {
-      "filename" : "Day-Sunset-1--Streamline-Ultimate.png",
-      "idiom" : "universal"
+      "filename": "icon-sunset.svg",
+      "idiom": "universal"
     }
   ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "preserves-vector-representation": true
   }
 }

@@ -43,6 +43,9 @@ enum PixelSpriteKind: String, CaseIterable {
     case house
     case sliders
     case refresh
+    case air
+    case smile
+    case scenery
 
     // Avatar accessories (see `AvatarAccessory.sprite`): full-color game sprites, drawn with the
     // extra palette characters in `color(for:tint:)` rather than the tintable icon palette.
@@ -86,7 +89,10 @@ enum PixelSpriteKind: String, CaseIterable {
         case "arrow.up.arrow.down": self = .tempRange
         case "humidity": self = .humidity
         case "gauge": self = .gauge
-        case "gauge.with.dots.needle.67percent", "aqi.medium": self = .gaugeAQI
+        case "gauge.with.dots.needle.67percent": self = .gaugeAQI
+        case "aqi.medium": self = .air
+        case "face.smiling": self = .smile
+        case "photo": self = .scenery
         case "eye": self = .eye
         case "sunrise", "sunrise.fill": self = .sunrise
         case "sunset", "sunset.fill": self = .sunset
@@ -145,6 +151,9 @@ extension PixelSpriteKind {
         case .house: "icon-house"
         case .sliders: "icon-sliders"
         case .refresh: "icon-refresh"
+        case .air: "icon-air"
+        case .smile: "icon-smile"
+        case .scenery: "icon-scenery"
         case .accessoryPartyHat, .accessoryCap, .accessoryBeanie,
              .accessoryRoundGlasses, .accessoryShades, .accessoryMonocle,
              .accessoryCigarette, .accessoryPipe, .accessoryLollipop:
@@ -673,6 +682,63 @@ extension PixelSpriteKind {
                 "................",
                 "................",
             ]
+        case .air:
+            return [
+                "................",
+                "................",
+                "..........KKKK..",
+                "........KKAAAK..",
+                "......KKAAAAAK..",
+                ".....KAAAAKAAK..",
+                "....KAAAAKAAAK..",
+                "....KAAAKAAAK...",
+                "...KAAAKAAAAK...",
+                "...KAAKAAAAK....",
+                "...KAKAAAAK.....",
+                "...KKAAAKK......",
+                "..KKKKKK........",
+                ".KK.............",
+                "................",
+                "................",
+            ]
+        case .smile:
+            return [
+                "................",
+                ".....KKKKKK.....",
+                "...KKAAAAAAKK...",
+                "..KAAAAAAAAAAK..",
+                "..KAAAAAAAAAAK..",
+                ".KAKKKKAAKKKKAK.",
+                ".KAKKKKKKKKKKAK.",
+                ".KAAKKAAAAKKAAK.",
+                ".KAAAAAAAAAAAAK.",
+                ".KAAKAAAAAAKAAK.",
+                ".KAAAKKKKKKAAAK.",
+                "..KAAAAAAAAAAK..",
+                "..KAAAAAAAAAAK..",
+                "...KKAAAAAAKK...",
+                ".....KKKKKK.....",
+                "................",
+            ]
+        case .scenery:
+            return [
+                "................",
+                "................",
+                ".KKKKKKKKKKKKKK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KWWWWWWWWWAAWK.",
+                ".KWWWWWWWWWAAWK.",
+                ".KWWWWKWWWWWWWK.",
+                ".KWWWKAKWWWWWWK.",
+                ".KWWKAAAKWWKWWK.",
+                ".KWKAAAAAKKAKWK.",
+                ".KKAAAAAAAAAAKK.",
+                ".KAAAAAAAAAAAAK.",
+                ".KKKKKKKKKKKKKK.",
+                "................",
+                "................",
+                "................",
+            ]
         case .gaugeAQI:
             return [
                 "................",
@@ -1080,12 +1146,12 @@ struct PixelSprite: View {
         let size = CGSize(width: CGFloat(cols) * unit, height: CGFloat(rows) * unit)
 
         Group {
-            if let assetName = kind.customAssetName, let uiImage = UIImage(named: assetName) {
-                // A custom icon exists for this kind — use it as-is (nearest-neighbor, so it
-                // stays crisp like the rest of the pixel art) instead of the hand-drawn grid.
-                Image(uiImage: uiImage)
+            if let assetName = kind.customAssetName, UIImage(named: assetName) != nil {
+                // A custom icon exists for this kind. Loaded by name so SVG assets keep their
+                // vector data and stay sharp at every `scale`.
+                Image(assetName)
                     .resizable()
-                    .interpolation(.none)
+                    .interpolation(.high)
                     .scaledToFit()
             } else {
                 Canvas { context, _ in

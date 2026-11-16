@@ -437,7 +437,7 @@ extension PixelGrid {
     }
 }
 
-private extension Color {
+extension Color {
     /// Linear RGB blend toward `other` (`Color.mix` needs iOS 18; the app supports 17).
     func blended(with other: Color, by fraction: Double) -> Color {
         var (r1, g1, b1, a1): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)

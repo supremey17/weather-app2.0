@@ -58,3 +58,22 @@ struct TemperatureReadoutFormatTests {
         #expect(TemperatureReadoutFormat.accessibilityLabel(temp: 21.7, units: .metric) == "22 degrees Celsius")
     }
 }
+
+struct SevenSegmentTests {
+    @Test func lightsTheStandardSegmentsForEachDigit() {
+        #expect(SevenSegment.lit(for: "0") == "abcdef")
+        #expect(SevenSegment.lit(for: "1") == "bc")
+        #expect(SevenSegment.lit(for: "7") == "abc")
+        #expect(SevenSegment.lit(for: "8") == SevenSegment.all)
+    }
+
+    @Test func coversEveryCharacterAReadingCanContain() {
+        for character in "0123456789-FC" {
+            #expect(!SevenSegment.lit(for: character).isEmpty, "\(character) has no segments")
+        }
+    }
+
+    @Test func leavesUnknownCharactersBlank() {
+        #expect(SevenSegment.lit(for: "x").isEmpty)
+    }
+}

@@ -1,12 +1,15 @@
 {
-  "images" : [
+  "images": [
     {
-      "filename" : "Surveillance-Location-1--Streamline-Ultimate.png",
-      "idiom" : "universal"
+      "filename": "icon-location.svg",
+      "idiom": "universal"
     }
   ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "preserves-vector-representation": true
   }
 }

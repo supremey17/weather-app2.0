@@ -6,7 +6,8 @@ struct WeatherDetailsView: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        // Lazy, so the cards below the fold are only built once they scroll into view.
+        LazyVStack(alignment: .leading, spacing: PixelSpacing.lg) {
             CurrentMetricsSection(items: details.current, theme: theme)
             if let air = details.air {
                 AirQualitySection(air: air, theme: theme)
@@ -27,12 +28,15 @@ private struct CurrentMetricsSection: View {
 
     var body: some View {
         PixelPanel(theme: theme, isTranslucent: true) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                 PixelSectionTitle(title: "Right now", symbol: "gauge.with.dots.needle.67percent", theme: theme)
 
                 LazyVGrid(
-                    columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-                    spacing: 10
+                    columns: [
+                        GridItem(.flexible(), spacing: PixelSpacing.sm),
+                        GridItem(.flexible(), spacing: PixelSpacing.sm),
+                    ],
+                    spacing: PixelSpacing.sm
                 ) {
                     ForEach(items) { item in
                         MetricTile(item: item, theme: theme)
@@ -48,20 +52,21 @@ private struct MetricTile: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme, style: .hud, padding: 10, isTranslucent: true) {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
-                    PixelSprite(PixelSpriteKind(sfSymbol: item.symbol), scale: 2, tint: theme.accentColor)
-                    Text(item.label)
-                        .pixelFont(.caption)
-                }
-                .foregroundStyle(theme.textColor(on: .hud).opacity(0.72))
-                Text(verbatim: item.value)
-                    .pixelFont(.number)
-                    .foregroundStyle(theme.textColor(on: .hud))
+        // A recessed LCD-style readout window set into the card.
+        VStack(alignment: .leading, spacing: PixelSpacing.sm) {
+            HStack(spacing: PixelSpacing.sm) {
+                PixelSprite(PixelSpriteKind(sfSymbol: item.symbol), scale: 1.5, tint: theme.accentColor)
+                Text(item.label)
+                    .pixelFont(.caption)
+                    .foregroundStyle(theme.textColor(on: .hud).opacity(0.72))
             }
-            .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+            Text(verbatim: item.value)
+                .pixelFont(.number)
+                .foregroundStyle(theme.textColor(on: .hud))
         }
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .padding(PixelSpacing.sm)
+        .pixelWell(fill: theme.fill(for: .hud).opacity(0.9))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.label): \(item.value)")
     }
@@ -73,32 +78,38 @@ private struct AirQualitySection: View {
 
     var body: some View {
         PixelPanel(theme: theme, isTranslucent: true) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                 PixelSectionTitle(title: "Air quality", symbol: "aqi.medium", theme: theme)
 
                 Label {
                     Text(verbatim: air.label)
                         .pixelFont(.headline)
                 } icon: {
-                    Rectangle()
-                        .fill(aqiColor(air.colorName))
-                        .frame(width: 14, height: 14)
+                    // Status lamp: a domed indicator light in the AQI band's color.
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [.white.opacity(0.9), aqiColor(air.colorName)],
+                                center: UnitPoint(x: 0.35, y: 0.3),
+                                startRadius: 0,
+                                endRadius: 8
+                            )
+                        )
+                        .frame(width: 16, height: 16)
                         .overlay {
-                            PixelBevelShape(notch: 2)
-                                .stroke(Color.black.opacity(0.4), lineWidth: 1)
+                            Circle().strokeBorder(Color.black.opacity(0.45), lineWidth: 1)
                         }
-                        .clipShape(PixelBevelShape(notch: 2))
                 }
                 .foregroundStyle(theme.panelTextColor)
 
                 PixelStatBar(value: aqiNormalizedLevel, segments: 5, theme: theme)
 
                 LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3),
-                    spacing: 8
+                    columns: Array(repeating: GridItem(.flexible(), spacing: PixelSpacing.sm), count: 3),
+                    spacing: PixelSpacing.sm
                 ) {
                     ForEach(pollutants, id: \.name) { pollutant in
-                        VStack(spacing: 2) {
+                        VStack(spacing: PixelSpacing.sm) {
                             Text(verbatim: pollutant.name)
                                 .pixelFont(.caption)
                                 .foregroundStyle(theme.panelTextColor.opacity(0.72))
@@ -107,6 +118,8 @@ private struct AirQualitySection: View {
                                 .foregroundStyle(theme.panelTextColor)
                         }
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, PixelSpacing.sm)
+                        .pixelWell(fill: Color.black.opacity(0.22))
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("\(pollutant.name): \(Int(pollutant.value.rounded())) micrograms per cubic meter")
                     }
@@ -157,13 +170,13 @@ private struct HourlyForecastSection: View {
 
     var body: some View {
         PixelPanel(theme: theme, isTranslucent: true) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                 PixelSectionTitle(title: "Next 24 hours", symbol: "clock", theme: theme)
 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 10) {
+                    LazyHStack(spacing: PixelSpacing.sm) {
                         ForEach(hours) { hour in
-                            VStack(spacing: 7) {
+                            VStack(spacing: PixelSpacing.sm) {
                                 Text(verbatim: hour.time)
                                     .pixelFont(.caption)
                                 PixelSprite(PixelSpriteKind(sfSymbol: hour.symbol), scale: 2)
@@ -172,11 +185,7 @@ private struct HourlyForecastSection: View {
                             }
                             .foregroundStyle(theme.panelTextColor)
                             .frame(width: 72, height: 104)
-                            .background(theme.skyColor.opacity(0.22))
-                            .overlay {
-                                Rectangle()
-                                    .stroke(theme.accentColor.opacity(0.50), lineWidth: 1)
-                            }
+                            .pixelWell(fill: Color.black.opacity(0.22))
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("\(hour.time): \(hour.temp)")
                         }
@@ -193,15 +202,18 @@ private struct DailyForecastSection: View {
 
     var body: some View {
         PixelPanel(theme: theme, isTranslucent: true) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: PixelSpacing.sm) {
                 PixelSectionTitle(title: "5-day forecast", symbol: "calendar", theme: theme)
+                    .padding(.bottom, PixelSpacing.sm)
 
-                ForEach(days) { day in
-                    HStack(spacing: 10) {
+                ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                    if index > 0 {
+                        PixelGroove()
+                    }
+                    HStack(spacing: PixelSpacing.sm) {
                         Text(verbatim: day.day)
-                            .frame(minWidth: 42, alignment: .leading)
+                            .frame(minWidth: 40, alignment: .leading)
                         PixelSprite(PixelSpriteKind(sfSymbol: day.symbol), scale: 2)
-                            .frame(width: 24)
                         PixelRainDropGauge(chance: day.chanceOfRain, theme: theme)
                         Spacer()
                         Text(verbatim: day.low)
@@ -211,7 +223,7 @@ private struct DailyForecastSection: View {
                     }
                     .pixelFont(.number)
                     .foregroundStyle(theme.panelTextColor)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, PixelSpacing.sm)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(day.day): low \(day.low), high \(day.high), \(day.chanceOfRain)% chance of rain")
                 }
@@ -333,8 +345,8 @@ private struct PixelSectionTitle: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        PixelPanel(theme: theme, style: .hud, padding: 6, isTranslucent: true) {
-            HStack(spacing: 6) {
+        PixelPanel(theme: theme, style: .hud, padding: PixelSpacing.sm, isTranslucent: true) {
+            HStack(spacing: PixelSpacing.sm) {
                 PixelSprite(PixelSpriteKind(sfSymbol: symbol), scale: 2, tint: theme.accentColor)
                 Text(title)
                     .pixelFont(.headline)

@@ -118,76 +118,150 @@ enum TemperatureReadoutFormat {
     }
 }
 
+// MARK: - Seven-segment glyphs
+
+/// Segment layout of a classic seven-segment display: `a` top, `b` upper right, `c` lower right,
+/// `d` bottom, `e` lower left, `f` upper left, `g` middle.
+enum SevenSegment {
+    static let all = "abcdefg"
+
+    /// The segments lit for `character`: digits, a minus sign, and the unit letters F and C.
+    /// Anything else is blank.
+    static func lit(for character: Character) -> String {
+        switch character {
+        case "0": "abcdef"
+        case "1": "bc"
+        case "2": "abdeg"
+        case "3": "abcdg"
+        case "4": "bcfg"
+        case "5": "acdfg"
+        case "6": "acdefg"
+        case "7": "abc"
+        case "8": "abcdefg"
+        case "9": "abcdfg"
+        case "-": "g"
+        case "F": "aefg"
+        case "C": "adef"
+        default: ""
+        }
+    }
+}
+
+/// The chosen `segments` of one seven-segment cell, as chamfered bars filling `rect`.
+struct SevenSegmentGlyph: Shape {
+    let segments: String
+
+    func path(in rect: CGRect) -> Path {
+        let thickness = rect.width * 0.22
+        let half = thickness / 2
+        let gap = thickness * 0.14
+        let left = rect.minX + half
+        let right = rect.maxX - half
+        let top = rect.minY + half
+        let middle = rect.midY
+        let bottom = rect.maxY - half
+
+        var path = Path()
+
+        func horizontal(_ y: CGFloat) {
+            let start = left + gap
+            let end = right - gap
+            path.move(to: CGPoint(x: start, y: y))
+            path.addLine(to: CGPoint(x: start + half, y: y - half))
+            path.addLine(to: CGPoint(x: end - half, y: y - half))
+            path.addLine(to: CGPoint(x: end, y: y))
+            path.addLine(to: CGPoint(x: end - half, y: y + half))
+            path.addLine(to: CGPoint(x: start + half, y: y + half))
+            path.closeSubpath()
+        }
+
+        func vertical(_ x: CGFloat, from startY: CGFloat, to endY: CGFloat) {
+            let start = startY + gap
+            let end = endY - gap
+            path.move(to: CGPoint(x: x, y: start))
+            path.addLine(to: CGPoint(x: x + half, y: start + half))
+            path.addLine(to: CGPoint(x: x + half, y: end - half))
+            path.addLine(to: CGPoint(x: x, y: end))
+            path.addLine(to: CGPoint(x: x - half, y: end - half))
+            path.addLine(to: CGPoint(x: x - half, y: start + half))
+            path.closeSubpath()
+        }
+
+        for segment in segments {
+            switch segment {
+            case "a": horizontal(top)
+            case "b": vertical(right, from: top, to: middle)
+            case "c": vertical(right, from: middle, to: bottom)
+            case "d": horizontal(bottom)
+            case "e": vertical(left, from: middle, to: bottom)
+            case "f": vertical(left, from: top, to: middle)
+            case "g": horizontal(middle)
+            default: break
+            }
+        }
+        return path
+    }
+}
+
 // MARK: - View
 
-/// The hero's big arcade-style current temperature: a rounded whole number in the pixel display
-/// font, filled with a band-colored stepped gradient, wrapped in a hard dark outline and pixel
-/// drop shadow, with a soft neon glow. Static (no animation), so it's Reduce Motion-safe.
+/// The hero's current temperature as a seven-segment display set into a recessed dark window:
+/// lit segments glow in the reading's band color over faint unlit "ghost" segments, like a
+/// dashboard or bedside-clock readout. Static (no animation), so it's Reduce Motion-safe.
 struct PixelTemperatureReadout: View {
     let temp: Double
     let units: Units
     var isNight: Bool = false
 
-    @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 80
-    @ScaledMetric(relativeTo: .largeTitle) private var unitSize: CGFloat = 24
-    @ScaledMetric(relativeTo: .largeTitle) private var outlineWidth: CGFloat = 3
-    @ScaledMetric(relativeTo: .largeTitle) private var dropOffset: CGFloat = 6
+    @ScaledMetric(relativeTo: .largeTitle) private var scaledDigitHeight: CGFloat = 64
+
+    /// Capped so the display still fits the card at the largest Dynamic Type sizes.
+    private var digitHeight: CGFloat { min(scaledDigitHeight, 88) }
 
     private var colors: TemperatureColors {
         TemperatureBand.make(temp: temp, units: units).colors
     }
 
-    /// One `Text` (number + raised smaller unit) so every copy below scales identically under
-    /// `minimumScaleFactor` and the unit stays locked to the number.
-    private var readout: Text {
-        let number = Text(TemperatureReadoutFormat.number(temp))
-            .font(PixelFont.hero(size: numberSize))
-        let unit = Text(units.symbol)
-            .font(PixelFont.hero(size: unitSize))
-            // Raise the unit so its top lines up with the number's (Press Start 2P's caps fill
-            // roughly 7/8 of the em), like a game HUD's superscript unit.
-            .baselineOffset((numberSize - unitSize) * 0.875)
-        return Text("\(number)\(unit)")
-    }
+    private var unitLetter: Character { units == .imperial ? "F" : "C" }
 
-    private func layer(_ style: Color) -> some View {
-        readout
-            .foregroundStyle(style)
-            .lineLimit(1)
-            .minimumScaleFactor(0.4)
+    private static let screen = Color(red: 0.03, green: 0.05, blue: 0.08)
+
+    private func glyph(_ character: Character, height: CGFloat) -> some View {
+        ZStack {
+            // Unlit segments stay faintly visible, as on a real display.
+            SevenSegmentGlyph(segments: SevenSegment.all)
+                .fill(colors.base.opacity(0.1))
+            SevenSegmentGlyph(segments: SevenSegment.lit(for: character))
+                .fill(colors.gradient)
+                .shadow(color: colors.glow.opacity(isNight ? 0.8 : 0.6), radius: height / 16)
+        }
+        .frame(width: height / 2, height: height)
     }
 
     var body: some View {
-        ZStack {
-            // Hard pixel drop shadow.
-            layer(TemperatureColors.outline.opacity(0.85))
-                .offset(x: dropOffset, y: dropOffset)
+        let digits = Array(TemperatureReadoutFormat.number(temp))
+        let unitHeight = digitHeight / 2
 
-            // Blocky dark outline: eight hard offsets, no blur.
-            ForEach(Self.outlineDirections.indices, id: \.self) { index in
-                let direction = Self.outlineDirections[index]
-                layer(TemperatureColors.outline)
-                    .offset(x: direction.x * outlineWidth, y: direction.y * outlineWidth)
+        HStack(alignment: .top, spacing: PixelSpacing.sm) {
+            ForEach(digits.indices, id: \.self) { index in
+                glyph(digits[index], height: digitHeight)
             }
 
-            readout
-                .foregroundStyle(colors.gradient)
-                .lineLimit(1)
-                .minimumScaleFactor(0.4)
+            HStack(alignment: .top, spacing: PixelSpacing.sm / 2) {
+                // Degree mark: a small lit ring.
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .strokeBorder(colors.highlight, lineWidth: unitHeight / 12)
+                    .frame(width: unitHeight / 3, height: unitHeight / 3)
+                    .shadow(color: colors.glow.opacity(0.6), radius: 2)
+                glyph(unitLetter, height: unitHeight)
+            }
         }
-        .padding(.trailing, dropOffset)
-        .padding(.bottom, dropOffset)
-        .compositingGroup()
-        .shadow(color: colors.glow.opacity(isNight ? 0.7 : 0.5), radius: 12)
+        .padding(PixelSpacing.md)
+        .pixelWell(fill: Self.screen)
+        .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(TemperatureReadoutFormat.accessibilityLabel(temp: temp, units: units))
     }
-
-    private static let outlineDirections: [CGPoint] = [
-        CGPoint(x: -1, y: -1), CGPoint(x: 0, y: -1), CGPoint(x: 1, y: -1),
-        CGPoint(x: -1, y: 0), CGPoint(x: 1, y: 0),
-        CGPoint(x: -1, y: 1), CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1),
-    ]
 }
 
 extension PixelFont {

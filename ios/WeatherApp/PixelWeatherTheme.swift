@@ -493,6 +493,20 @@ extension View {
     }
 }
 
+// MARK: - Spacing
+
+/// The 8-point spatial grid every card, gap and inset snaps to.
+enum PixelSpacing {
+    /// 8: an icon and its label, or neighboring tiles inside a card.
+    static let sm: CGFloat = 8
+    /// 16: card padding, and gaps between groups inside a card.
+    static let md: CGFloat = 16
+    /// 24: whitespace between cards.
+    static let lg: CGFloat = 24
+    /// 32: page-level breathing room.
+    static let xl: CGFloat = 32
+}
+
 // MARK: - Shapes
 
 /// A square frame with stepped, notched corners instead of rounded ones, matching
@@ -541,7 +555,7 @@ enum PixelPanelStyle {
 struct PixelPanel<Content: View>: View {
     let theme: PixelWeatherTheme
     var style: PixelPanelStyle = .standard
-    var padding: CGFloat = 14
+    var padding: CGFloat = PixelSpacing.md
     /// See-through tinted fill so the backdrop shows behind the panel, instead of the plain
     /// opaque fill. On by default; pass `false` for panels that need a solid backing.
     var isTranslucent: Bool = true
@@ -550,7 +564,7 @@ struct PixelPanel<Content: View>: View {
     init(
         theme: PixelWeatherTheme,
         style: PixelPanelStyle = .standard,
-        padding: CGFloat = 14,
+        padding: CGFloat = PixelSpacing.md,
         isTranslucent: Bool = true,
         @ViewBuilder content: () -> Content
     ) {
@@ -574,36 +588,117 @@ struct PixelPanel<Content: View>: View {
         }
     }
 
+    /// Full cards get the large radius; compact chips (section titles, the search bar) get the
+    /// small one, so nested corners stay concentric.
+    private var cornerRadius: CGFloat {
+        padding >= PixelSpacing.md ? PixelSpacing.md : PixelSpacing.sm
+    }
+
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         content
             .padding(padding)
             .background {
-                if isTranslucent {
-                    // See-through: no blur, so the backdrop (and its animals) shows clearly
-                    // behind the panel; the tinted fill keeps the text readable.
-                    fill.opacity(0.55)
-                } else {
-                    fill
-                }
+                // Body: lit from above, so the face runs light at the top to dark at the bottom.
+                // Translucent panels keep the backdrop (and its animals) visible behind them.
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                fill.blended(with: .white, by: 0.14),
+                                fill,
+                                fill.blended(with: .black, by: 0.16),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .opacity(isTranslucent ? 0.6 : 1)
             }
             .overlay {
-                PixelBevelShape()
-                    .inset(by: 2.5)
-                    .stroke(Color.white.opacity(0.55), lineWidth: 1)
+                // Inner bevel: a bright lip under the top edge fading to a shaded lower edge.
+                shape
+                    .inset(by: 2)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.6), .white.opacity(0.08), .black.opacity(0.28)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
             }
             .overlay {
-                PixelBevelShape()
-                    .stroke(borderColor.opacity(0.99), lineWidth: 2)
+                // Outer rim in the panel's trim color, shaded like a machined bezel.
+                shape
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                borderColor.blended(with: .white, by: 0.35),
+                                borderColor,
+                                borderColor.blended(with: .black, by: 0.35),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 2
+                    )
             }
-            .clipShape(PixelBevelShape())
-            .shadow(color: .black.opacity(0.77), radius: 0, x: 3, y: 3)
+            .clipShape(shape)
+            .compositingGroup()
+            // Tight contact shadow plus a soft ambient one, so the card sits above the scene.
+            .shadow(color: .black.opacity(0.45), radius: 1, x: 0, y: 1)
+            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 8)
+    }
+}
+
+// MARK: - Wells
+
+/// A recessed readout window cut into a card: darker at the top edge where the rim casts a
+/// shadow, with a thin catch-light along the bottom lip.
+struct PixelWell: ViewModifier {
+    let fill: Color
+    var cornerRadius: CGFloat = PixelSpacing.sm
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content
+            .background {
+                shape.fill(fill.shadow(.inner(color: .black.opacity(0.45), radius: 3, x: 0, y: 2)))
+            }
+            .overlay {
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [.black.opacity(0.5), .black.opacity(0.15), .white.opacity(0.4)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+            }
+    }
+}
+
+extension View {
+    func pixelWell(fill: Color, cornerRadius: CGFloat = PixelSpacing.sm) -> some View {
+        modifier(PixelWell(fill: fill, cornerRadius: cornerRadius))
+    }
+}
+
+/// An engraved divider: a dark groove with a catch-light under it.
+struct PixelGroove: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Color.black.opacity(0.35)).frame(height: 1)
+            Rectangle().fill(Color.white.opacity(0.18)).frame(height: 1)
+        }
+        .accessibilityHidden(true)
     }
 }
 
 // MARK: - Buttons
 
-/// Unified pixel button: the bevel flips and the content nudges down-right when pressed,
-/// mimicking a physical button being pushed into a sprite sheet.
+/// Unified button: a raised key lit from above that sinks and darkens when pressed.
 struct PixelButtonStyle: ButtonStyle {
     enum Kind {
         case primary
@@ -630,18 +725,32 @@ struct PixelButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let isPressed = configuration.isPressed
-        configuration.label
+        let shape = RoundedRectangle(cornerRadius: PixelSpacing.sm, style: .continuous)
+        let face: [Color] = isPressed
+            ? [background.blended(with: .black, by: 0.22), background.blended(with: .black, by: 0.08)]
+            : [background.blended(with: .white, by: 0.28), background.blended(with: .black, by: 0.12)]
+        let rim: [Color] = isPressed
+            ? [.black.opacity(0.45), .black.opacity(0.1)]
+            : [.white.opacity(0.65), .black.opacity(0.3)]
+        return configuration.label
             .pixelFont(.label)
             .foregroundStyle(foreground)
-            .padding(kind == .icon ? 9 : 10)
-            .background(background)
-            .overlay {
-                PixelBevelShape(notch: 3)
-                    .stroke(isPressed ? Color.black.opacity(0.4) : Color.white.opacity(0.3), lineWidth: 1)
+            .padding(.horizontal, kind == .icon ? PixelSpacing.sm : PixelSpacing.md)
+            .padding(.vertical, PixelSpacing.sm)
+            .background {
+                shape.fill(LinearGradient(colors: face, startPoint: .top, endPoint: .bottom))
             }
-            .clipShape(PixelBevelShape(notch: 3))
-            .offset(x: isPressed ? 2 : 0, y: isPressed ? 2 : 0)
-            .shadow(color: .black.opacity(isPressed ? 0 : 0.3), radius: 0, x: isPressed ? 0 : 2, y: isPressed ? 0 : 2)
+            .overlay {
+                shape.strokeBorder(
+                    LinearGradient(colors: rim, startPoint: .top, endPoint: .bottom),
+                    lineWidth: 1
+                )
+            }
+            .clipShape(shape)
+            .offset(y: isPressed ? 2 : 0)
+            .shadow(color: .black.opacity(isPressed ? 0.15 : 0.4), radius: isPressed ? 0 : 1, x: 0, y: isPressed ? 0 : 2)
+            // A light tap as the key goes down (not again on release).
+            .sensoryFeedback(.impact(weight: .light), trigger: isPressed) { _, pressed in pressed }
     }
 }
 
@@ -679,9 +788,13 @@ struct PixelStatBar: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(0..<max(segments, 1), id: \.self) { index in
-                Rectangle()
-                    .fill(index < filledCount ? theme.accentColor : theme.palette.panelShade)
-                    .frame(width: 8, height: 12)
+                let isLit = index < filledCount
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(
+                        (isLit ? theme.accentColor : theme.palette.panelShade)
+                            .shadow(.inner(color: .black.opacity(isLit ? 0.2 : 0.5), radius: 1, x: 0, y: 1))
+                    )
+                    .frame(width: 8, height: 16)
             }
         }
         .accessibilityHidden(true)

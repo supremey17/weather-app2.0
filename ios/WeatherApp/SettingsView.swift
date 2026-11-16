@@ -39,9 +39,9 @@ struct SettingsView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: PixelSpacing.lg) {
                         PixelPanel(theme: model.weatherTheme, style: .wood) {
-                            VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                                 SettingsSectionTitle(title: "Home checkpoint", symbol: "house", theme: model.weatherTheme)
                                 PixelPanel(theme: model.weatherTheme, style: .hud, padding: 8) {
                                     TextField("e.g. Rochester", text: $homeCity)
@@ -54,9 +54,9 @@ struct SettingsView: View {
                         }
 
                         PixelPanel(theme: model.weatherTheme, style: .wood) {
-                            VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                                 SettingsSectionTitle(title: "Weather units", symbol: "thermometer", theme: model.weatherTheme)
-                                HStack(spacing: 10) {
+                                HStack(spacing: PixelSpacing.sm) {
                                     ForEach(Units.allCases) { unit in
                                         Button(unit.label) {
                                             units = unit
@@ -68,7 +68,7 @@ struct SettingsView: View {
                         }
 
                         PixelPanel(theme: model.weatherTheme, style: .wood) {
-                            VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                                 SettingsSectionTitle(title: "Dashboard options", symbol: "slider.horizontal.3", theme: model.weatherTheme)
                                 Toggle("Gear check", isOn: $adviceEnabled)
                                     .toggleStyle(PixelToggleStyle(theme: model.weatherTheme))
@@ -79,7 +79,7 @@ struct SettingsView: View {
                         }
 
                         PixelPanel(theme: model.weatherTheme, style: .wood) {
-                            VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: PixelSpacing.md) {
                                 SettingsSectionTitle(title: "Accessories", symbol: "face.smiling", theme: model.weatherTheme)
                                 Toggle("Accessories", isOn: $accessoriesEnabled)
                                     .toggleStyle(PixelToggleStyle(theme: model.weatherTheme))
@@ -88,14 +88,14 @@ struct SettingsView: View {
                                     Spacer()
                                     AvatarView(
                                         image: model.avatarImage,
-                                        size: CGSize(width: 90, height: 130),
+                                        size: CGSize(width: 88, height: 128),
                                         accessories: previewAccessories,
                                         anchors: model.avatarFaceAnchors
                                     )
                                     Spacer()
                                 }
 
-                                VStack(spacing: 10) {
+                                VStack(spacing: PixelSpacing.sm) {
                                     ForEach(AccessorySlot.allCases, id: \.self) { slot in
                                         AccessorySlotRow(
                                             slot: slot,
@@ -116,14 +116,15 @@ struct SettingsView: View {
                         }
 
                         PixelPanel(theme: model.weatherTheme, style: .wood) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                SettingsSectionTitle(title: "Backdrop", symbol: "map", theme: model.weatherTheme)
+                            VStack(alignment: .leading, spacing: PixelSpacing.md) {
+                                SettingsSectionTitle(title: "Backdrop", symbol: "photo", theme: model.weatherTheme)
                                 BackdropRow(background: $backgroundDraft, theme: model.weatherTheme)
                             }
                             .foregroundStyle(model.weatherTheme.textColor(on: .wood))
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, PixelSpacing.md)
+                    .padding(.vertical, PixelSpacing.lg)
                 }
                 .scrollContentBackground(.hidden)
             }
@@ -171,7 +172,7 @@ private struct SettingsSectionTitle: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: PixelSpacing.sm) {
             PixelSprite(PixelSpriteKind(sfSymbol: symbol), scale: 2, tint: theme.accentColor)
             Text(title)
                 .pixelFont(.headline)
@@ -194,24 +195,34 @@ private struct PixelToggleStyle: ToggleStyle {
             Button {
                 configuration.isOn.toggle()
             } label: {
-                PixelBevelShape(notch: 3)
-                    .fill(theme.palette.panelShade)
-                    .frame(width: 64, height: 28)
-                    .overlay {
-                        PixelBevelShape(notch: 3)
-                            .stroke(theme.accentColor.opacity(0.7), lineWidth: 1)
-                    }
+                // A recessed track with a raised thumb that slides between OFF and ON.
+                Color.clear
+                    .frame(width: 72, height: 32)
+                    .pixelWell(fill: theme.palette.panelShade)
                     .overlay(alignment: configuration.isOn ? .trailing : .leading) {
                         Text(configuration.isOn ? "ON" : "OFF")
                             .pixelFont(.caption)
                             .foregroundStyle(theme.panelColor)
-                            .frame(width: 32, height: 22)
-                            .background(theme.accentColor)
-                            .clipShape(PixelBevelShape(notch: 2))
-                            .padding(3)
+                            .frame(width: 40, height: 24)
+                            .background {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                theme.accentColor.blended(with: .white, by: 0.3),
+                                                theme.accentColor.blended(with: .black, by: 0.12),
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .shadow(color: .black.opacity(0.4), radius: 1, x: 0, y: 1)
+                            }
+                            .padding(4)
                     }
             }
             .buttonStyle(.plain)
+            .sensoryFeedback(.selection, trigger: configuration.isOn)
             .accessibilityLabel(configuration.isOn ? "On" : "Off")
         }
     }
@@ -257,11 +268,11 @@ private struct AccessorySlotRow: View {
             Text(slotName)
                 .pixelFont(.body)
                 .foregroundStyle(theme.textColor(on: .wood))
-                .frame(width: 70, alignment: .leading)
+                .frame(width: 72, alignment: .leading)
 
             Spacer()
 
-            HStack(spacing: 12) {
+            HStack(spacing: PixelSpacing.sm) {
                 Button("◀") { step(forward: false) }
                     .buttonStyle(PixelButtonStyle(theme: theme, kind: .icon))
                     .disabled(!enabled)
@@ -269,7 +280,7 @@ private struct AccessorySlotRow: View {
                 Text(currentName)
                     .pixelFont(.body)
                     .foregroundStyle(theme.textColor(on: .wood))
-                    .frame(minWidth: 90)
+                    .frame(minWidth: 88)
 
                 Button("▶") { step(forward: true) }
                     .buttonStyle(PixelButtonStyle(theme: theme, kind: .icon))
@@ -299,14 +310,14 @@ private struct BackdropRow: View {
     let theme: PixelWeatherTheme
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: PixelSpacing.sm) {
             Button("◀") { background = PixelBackground.cycled(from: background, forward: false) }
                 .buttonStyle(PixelButtonStyle(theme: theme, kind: .icon))
 
             Text(background.displayName)
                 .pixelFont(.body)
                 .foregroundStyle(theme.textColor(on: .wood))
-                .frame(minWidth: 90)
+                .frame(minWidth: 88)
 
             Button("▶") { background = PixelBackground.cycled(from: background, forward: true) }
                 .buttonStyle(PixelButtonStyle(theme: theme, kind: .icon))

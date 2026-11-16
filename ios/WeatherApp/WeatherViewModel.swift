@@ -46,6 +46,8 @@ final class WeatherViewModel {
     private let avatarStore: AvatarPhotoStore
     private let widgetStore: WidgetSnapshotStore
     private var service: WeatherService?
+    private var didStartAvatarLoad = false
+    private var avatarChangedSinceLaunch = false
 
     init(
         prefs: Preferences = Preferences(),
@@ -63,10 +65,26 @@ final class WeatherViewModel {
         selectedAccessoryIDs = prefs.selectedAccessoryIDs
         selectedBackground = prefs.selectedBackground
         service = try? WeatherService()
-        if let data = avatarStore.load() {
-            avatarImage = UIImage(data: data)
-        }
+        // The avatar photo is loaded lazily by `loadAvatarIfNeeded()`, off the main thread, so
+        // reading and decoding it never holds up the first frame at launch.
         avatarFaceAnchors = avatarStore.loadAnchors()
+    }
+
+    /// Reads and decodes the saved avatar on a background thread, once. Until it lands the
+    /// loadout shows the built-in silhouette.
+    func loadAvatarIfNeeded() async {
+        guard !didStartAvatarLoad else { return }
+        didStartAvatarLoad = true
+        let store = avatarStore
+        let loaded = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            guard let data = store.load(), let image = UIImage(data: data) else { return nil }
+            // Decode now, here, instead of on the main thread at first draw.
+            return image.preparingForDisplay() ?? image
+        }.value
+        // A photo picked or removed while this was loading wins.
+        if let loaded, avatarImage == nil, !avatarChangedSinceLaunch {
+            avatarImage = loaded
+        }
     }
 
     var hasAvatarPhoto: Bool { avatarImage != nil }
@@ -81,6 +99,7 @@ final class WeatherViewModel {
             let avatar = AvatarImageProcessing.makeAvatar(from: image)
             return (avatar, anchors)
         }.value
+        avatarChangedSinceLaunch = true
         avatarImage = processed
         avatarFaceAnchors = anchors
         guard let data = processed.pngData() else {
@@ -103,6 +122,7 @@ final class WeatherViewModel {
     }
 
     func removeAvatarPhoto() {
+        avatarChangedSinceLaunch = true
         avatarImage = nil
         avatarFaceAnchors = nil
         avatarStore.delete()
@@ -111,6 +131,7 @@ final class WeatherViewModel {
 
     /// Starts from an explicitly chosen city. Location is requested only from the dashboard action.
     func start() async {
+        Task { await loadAvatarIfNeeded() }
         guard service != nil else {
             resultText = "Weather service setup is incomplete."
             return
