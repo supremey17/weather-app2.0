@@ -749,6 +749,8 @@ struct PixelButtonStyle: ButtonStyle {
             .clipShape(shape)
             .offset(y: isPressed ? 2 : 0)
             .shadow(color: .black.opacity(isPressed ? 0.15 : 0.4), radius: isPressed ? 0 : 1, x: 0, y: isPressed ? 0 : 2)
+            // A light tap as the key goes down (not again on release).
+            .sensoryFeedback(.impact(weight: .light), trigger: isPressed) { _, pressed in pressed }
     }
 }
 

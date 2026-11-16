@@ -222,6 +222,7 @@ private struct PixelToggleStyle: ToggleStyle {
                     }
             }
             .buttonStyle(.plain)
+            .sensoryFeedback(.selection, trigger: configuration.isOn)
             .accessibilityLabel(configuration.isOn ? "On" : "Off")
         }
     }
